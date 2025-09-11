@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, View, Text, Image, TouchableOpacity } from 'react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 function SettingsCard({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
@@ -14,7 +14,7 @@ export default function ProfileScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Image source={require('@/assets/images/icon.png')} style={styles.avatar} />
+        <Image source={require('@/assets/images/ALogo.png')} style={styles.avatar} />
         <Text style={styles.name}>Alex Doe</Text>
         <Text style={styles.email}>alex@example.com</Text>
         <TouchableOpacity style={styles.editBtn}>

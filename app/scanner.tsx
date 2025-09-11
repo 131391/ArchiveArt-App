@@ -3,8 +3,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, BackHandler, Dimensions, Easing, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function ScannerScreen() {
@@ -21,6 +21,10 @@ export default function ScannerScreen() {
   const [retryCount, setRetryCount] = useState(0);
   const [maxRetries] = useState(3);
   const cameraRef = useRef<any>(null);
+  const [cameraInitialized, setCameraInitialized] = useState(false);
+  const [cameraKey, setCameraKey] = useState(0);
+  const [isReinitializing, setIsReinitializing] = useState(false);
+  const [hasNavigatedAway, setHasNavigatedAway] = useState(false);
 
   // Animated scan line
   const scanAnim = useRef(new Animated.Value(0)).current;
@@ -65,12 +69,12 @@ export default function ScannerScreen() {
 
   // Auto-capture timer effect (run once when ready)
   useEffect(() => {
-    if (isReady && !isScanning && !hasAutoCaptured) {
+    if (isReady && cameraInitialized && !isScanning && !hasAutoCaptured) {
       // Give camera more time to stabilize on iOS - increased delay for production builds
       const timer = setTimeout(() => {
         console.log('⏰ Auto-capture timer triggered');
         handleAutoCapture();
-      }, 5000); // Increased to 5000ms for iOS production build stability
+      }, 3000); // Reduced to 3000ms but ensure camera is initialized
 
       setAutoCaptureTimer(timer);
 
@@ -78,7 +82,7 @@ export default function ScannerScreen() {
         if (timer) clearTimeout(timer);
       };
     }
-  }, [isReady, isScanning, hasAutoCaptured]);
+  }, [isReady, cameraInitialized, isScanning, hasAutoCaptured]);
 
   // Cleanup timer on unmount
   useEffect(() => {
@@ -88,6 +92,54 @@ export default function ScannerScreen() {
       }
     };
   }, [autoCaptureTimer]);
+
+  // Reset camera state when screen comes into focus (e.g., returning from video player)
+  useFocusEffect(
+    useCallback(() => {
+      console.log('📷 Scanner screen focused - hasNavigatedAway:', hasNavigatedAway);
+      
+      // Only reset if we actually navigated away and came back
+      if (hasNavigatedAway) {
+        console.log('📷 Returning from another screen - resetting camera state');
+        
+        // Reset all camera-related states
+        setIsReady(false);
+        setCameraInitialized(false);
+        setIsScanning(false);
+        setIsProcessing(false);
+        setProgress(0);
+        setShowWarning(false);
+        setHasAutoCaptured(false);
+        setRetryCount(0);
+        
+        // Clear any existing timer
+        if (autoCaptureTimer) {
+          clearTimeout(autoCaptureTimer);
+          setAutoCaptureTimer(null);
+        }
+        
+        // Set reinitializing state
+        setIsReinitializing(true);
+        
+        // Force camera remount by changing key
+        setCameraKey(prev => prev + 1);
+        
+        // Small delay to ensure camera can reinitialize properly
+        const resetTimer = setTimeout(() => {
+          setIsReinitializing(false);
+          setHasNavigatedAway(false); // Reset the flag
+          console.log('📷 Camera state reset completed');
+        }, 1000);
+        
+        return () => {
+          clearTimeout(resetTimer);
+        };
+      } else {
+        // First time loading or already on this screen
+        console.log('📷 First time loading or already on scanner screen');
+      }
+    }, [autoCaptureTimer, hasNavigatedAway])
+  );
 
   const handleAutoCapture = async () => {
     if (isScanning) return;
@@ -99,8 +151,8 @@ export default function ScannerScreen() {
 
   const captureAndProcessImage = async () => {
     if (isScanning) return;
-    if (!permission?.granted || !isReady) {
-      console.log('⏳ Camera not ready or permission not granted');
+    if (!permission?.granted || !isReady || !cameraInitialized) {
+      console.log('⏳ Camera not ready or permission not granted - isReady:', isReady, 'cameraInitialized:', cameraInitialized, 'permission:', permission?.granted);
       return;
     }
 
@@ -118,54 +170,52 @@ export default function ScannerScreen() {
       const photo = await (async () => {
         const cam = cameraRef.current;
         if (!cam) {
-          console.log('❌ Camera ref is null');
-          return null;
+          console.log('❌ Camera ref is null - retrying in 1 second...');
+          // Wait a bit and try again
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          const retryCam = cameraRef.current;
+          if (!retryCam) {
+            console.log('❌ Camera ref still null after retry');
+            return null;
+          }
+          return retryCam;
         }
-        
+
         try {
-          // iOS-specific camera capture with multiple fallback methods
+          // For Expo Camera v16+, we need to use the correct API
           let result = null;
-          
-          // Method 1: Try takePicture with iOS-optimized settings
-          try {
-            result = await cam.takePicture({ 
-              quality: 0.9, // Higher quality for iOS
-              skipProcessing: false,
-              base64: false,
-              exif: false,
-              additionalExif: {}
-            });
-            console.log('✅ Camera capture successful (Method 1):', result);
-          } catch (method1Error) {
-            console.log('⚠️ Method 1 failed, trying Method 2:', method1Error);
-            
-            // Method 2: Try with different quality settings
-            try {
-              result = await cam.takePicture({ 
-                quality: 0.7,
-                skipProcessing: true, // Skip processing for iOS compatibility
-                base64: false,
-                exif: false
-              });
-              console.log('✅ Camera capture successful (Method 2):', result);
-            } catch (method2Error) {
-              console.log('⚠️ Method 2 failed, trying Method 3:', method2Error);
-              
-              // Method 3: Try with minimal settings
+
+          // Debug: Log what methods are available on the camera ref
+          console.log('🔍 Camera ref type:', typeof cam);
+          console.log('🔍 Camera ref methods:', Object.getOwnPropertyNames(cam));
+          console.log('🔍 Camera ref prototype:', Object.getOwnPropertyNames(Object.getPrototypeOf(cam)));
+
+          // Try different method names that might be available
+          const possibleMethods = ['takePictureAsync', 'takePicture', 'captureAsync', 'capture'];
+
+          for (const methodName of possibleMethods) {
+            if (typeof cam[methodName] === 'function') {
+              console.log(`✅ Found method: ${methodName}`);
               try {
-                result = await cam.takePicture({ 
-                  quality: 0.5,
-                  skipProcessing: true,
-                  base64: false
+                result = await cam[methodName]({
+                  quality: 0.8,
+                  base64: false,
+                  exif: false
                 });
-                console.log('✅ Camera capture successful (Method 3):', result);
-              } catch (method3Error) {
-                console.log('❌ All camera capture methods failed:', method3Error);
-                throw method3Error;
+                console.log(`✅ Camera capture successful using ${methodName}:`, result);
+                break;
+              } catch (methodError) {
+                console.log(`⚠️ Method ${methodName} failed:`, methodError);
+                continue;
               }
             }
           }
-          
+
+          if (!result) {
+            console.log('❌ No working camera capture method found');
+            return null;
+          }
+
           return result;
         } catch (error) {
           console.log('❌ Camera capture error:', error);
@@ -175,19 +225,23 @@ export default function ScannerScreen() {
 
       if (!photo || !('uri' in photo) || !photo.uri) {
         console.log('❌ Failed to capture image - photo object:', photo);
-        console.log('❌ Camera state - isReady:', isReady, 'permission granted:', permission?.granted);
+        console.log('❌ Camera state - isReady:', isReady, 'cameraInitialized:', cameraInitialized, 'permission granted:', permission?.granted);
         console.log('🔄 Retry count:', retryCount, 'Max retries:', maxRetries);
-        
-        // Retry logic for iOS production builds
+
+        // Retry logic with better state management
         if (retryCount < maxRetries) {
           console.log('🔄 Retrying capture in 2 seconds...');
           setRetryCount(prev => prev + 1);
+          // Reset scanning state before retry
+          setIsScanning(false);
+          setIsProcessing(false);
+          clearInterval(progTimer);
           setTimeout(() => {
             captureAndProcessImage();
           }, 2000);
           return;
         }
-        
+
         // Show centering warning only for camera capture issues
         setShowWarning(true);
         setTimeout(() => setShowWarning(false), 3000);
@@ -238,13 +292,15 @@ export default function ScannerScreen() {
       if (!res.ok || !json?.success) {
         console.log('❌ API request failed or returned error');
         // Navigate to no-match on backend errors
+        setHasNavigatedAway(true);
         router.push('/no-match');
         return;
       }
 
-      const match = Array.isArray(json.matches) && json.matches.length > 0 ? json.matches[0] : null;
+      const match = json.match || (Array.isArray(json.matches) && json.matches.length > 0 ? json.matches[0] : null);
       if (!match) {
         console.log('❌ No matches found in response');
+        setHasNavigatedAway(true);
         router.push('/no-match');
         return;
       }
@@ -258,7 +314,10 @@ export default function ScannerScreen() {
             : `${API_CONFIG.BASE_URL}/uploads/media/${match.file_path}`)
         : '';
       console.log('🎬 Navigating to media player with:', { url: mediaUrl, type: mediaType });
+      console.log('🔍 Debug - file_path:', match.file_path, 'BASE_URL:', API_CONFIG.BASE_URL);
 
+      // Set flag to indicate we're navigating away
+      setHasNavigatedAway(true);
       router.push({ pathname: '/media-player', params: { url: mediaUrl, type: mediaType } });
     } catch (e) {
       console.log('❌ Scan process error:', e);
@@ -327,13 +386,15 @@ export default function ScannerScreen() {
 
       if (!apiRes.ok || !json?.success) {
         console.log('❌ API request failed or returned error');
+        setHasNavigatedAway(true);
         router.push('/no-match');
         return;
       }
 
-      const match = Array.isArray(json.matches) && json.matches.length > 0 ? json.matches[0] : null;
+      const match = json.match || (Array.isArray(json.matches) && json.matches.length > 0 ? json.matches[0] : null);
       if (!match) {
         console.log('❌ No matches found in response');
+        setHasNavigatedAway(true);
         router.push('/no-match');
         return;
       }
@@ -347,7 +408,10 @@ export default function ScannerScreen() {
             : `${API_CONFIG.BASE_URL}/uploads/media/${match.file_path}`)
         : '';
       console.log('🎬 Navigating to media player with:', { url: mediaUrl, type: mediaType });
+      console.log('🔍 Debug - file_path:', match.file_path, 'BASE_URL:', API_CONFIG.BASE_URL);
 
+      // Set flag to indicate we're navigating away
+      setHasNavigatedAway(true);
       router.push({ pathname: '/media-player', params: { url: mediaUrl, type: mediaType } });
     } catch (e) {
       console.log('❌ API call error with selected image:', e);
@@ -375,17 +439,20 @@ export default function ScannerScreen() {
       {permission?.granted ? (
         <>
           <CameraView
+            key={cameraKey}
             style={StyleSheet.absoluteFill}
             onCameraReady={() => {
               console.log('📷 Camera is ready');
-              // Add extra delay for iOS stability
+              // Add extra delay for stability
               setTimeout(() => {
                 setIsReady(true);
-                console.log('📷 Camera ready state set to true');
-              }, 1000);
+                setCameraInitialized(true);
+                console.log('📷 Camera ready state set to true and initialized');
+              }, 1500);
             }}
             onMountError={(error) => {
               console.log('❌ Camera mount error:', error);
+              setCameraInitialized(false);
               setShowWarning(true);
               setTimeout(() => setShowWarning(false), 3000);
             }}
@@ -393,7 +460,6 @@ export default function ScannerScreen() {
             enableTorch={isTorchOn}
             facing="back"
             mode="picture"
-            // iOS-specific optimizations
             pictureSize="1920x1080"
             ref={cameraRef}
           />
@@ -423,11 +489,17 @@ export default function ScannerScreen() {
                 <Text style={styles.warningText}>
                   Camera issue detected. Please try again or use the gallery option.
                 </Text>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.retryButton}
                   onPress={() => {
                     setRetryCount(0);
                     setShowWarning(false);
+                    setHasAutoCaptured(false);
+                    // Reset camera state
+                    setCameraInitialized(false);
+                    setTimeout(() => {
+                      setCameraInitialized(true);
+                    }, 500);
                     captureAndProcessImage();
                   }}
                 >
@@ -438,8 +510,12 @@ export default function ScannerScreen() {
             <View style={styles.bottomControls}>
               <TouchableOpacity
                 style={[styles.circleBtn, isScanning && { opacity: 0.6 }]}
-                disabled={isScanning}
-                onPress={captureAndProcessImage}
+                disabled={isScanning || !cameraInitialized}
+                onPress={() => {
+                  console.log('📸 Manual capture triggered');
+                  setHasAutoCaptured(true); // Prevent auto-capture from interfering
+                  captureAndProcessImage();
+                }}
               >
                 <Ionicons name="scan" size={28} color="#fff" />
               </TouchableOpacity>
@@ -489,6 +565,14 @@ export default function ScannerScreen() {
                 <View style={styles.processingBox}>
                   <ActivityIndicator color="#fff" size="small" />
                   <Text style={styles.processingText}>Processing… {progress}%</Text>
+                </View>
+              )}
+              {(!cameraInitialized || isReinitializing) && !isProcessing && (
+                <View style={styles.processingBox}>
+                  <ActivityIndicator color="#fff" size="small" />
+                  <Text style={styles.processingText}>
+                    {isReinitializing ? 'Reinitializing camera...' : 'Initializing camera...'}
+                  </Text>
                 </View>
               )}
             </View>

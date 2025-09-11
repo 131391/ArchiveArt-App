@@ -1,13 +1,13 @@
-import React from 'react';
-import { StyleSheet, View, Text, Image } from 'react-native';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { router } from 'expo-router';
+import React from 'react';
+import { Image, StyleSheet, Text, View } from 'react-native';
 
 export default function NoMatchScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.center}>
-        <Image source={require('@/assets/images/favicon.png')} style={{ width: 72, height: 72 }} />
+        <Image source={require('@/assets/images/ALogo.png')} style={{ width: 72, height: 72 }} />
         <Text style={styles.title}>No Match Found</Text>
         <Text style={styles.subtext}>We couldn’t find media… Try again.</Text>
       </View>
