@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, Image } from 'react-native';
 import { IconTextInput } from '@/components/ui/IconTextInput';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
+import React, { useState } from 'react';
+import { Image, StyleSheet, Text, View } from 'react-native';
 
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
@@ -9,7 +9,7 @@ export default function ForgotPasswordScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Image source={require('@/assets/images/splash-icon.png')} style={{ width: 80, height: 80 }} />
+        <Image source={require('@/assets/images/ALogo.png')} style={{ width: 80, height: 80 }} />
         <Text style={styles.title}>Forgot Password</Text>
         <Text style={styles.subtitle}>Enter your email to receive a reset link.</Text>
       </View>

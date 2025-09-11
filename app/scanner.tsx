@@ -3,8 +3,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, BackHandler, Dimensions, Easing, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function ScannerScreen() {
@@ -22,6 +22,9 @@ export default function ScannerScreen() {
   const [maxRetries] = useState(3);
   const cameraRef = useRef<any>(null);
   const [cameraInitialized, setCameraInitialized] = useState(false);
+  const [cameraKey, setCameraKey] = useState(0);
+  const [isReinitializing, setIsReinitializing] = useState(false);
+  const [hasNavigatedAway, setHasNavigatedAway] = useState(false);
 
   // Animated scan line
   const scanAnim = useRef(new Animated.Value(0)).current;
@@ -89,6 +92,54 @@ export default function ScannerScreen() {
       }
     };
   }, [autoCaptureTimer]);
+
+  // Reset camera state when screen comes into focus (e.g., returning from video player)
+  useFocusEffect(
+    useCallback(() => {
+      console.log('📷 Scanner screen focused - hasNavigatedAway:', hasNavigatedAway);
+      
+      // Only reset if we actually navigated away and came back
+      if (hasNavigatedAway) {
+        console.log('📷 Returning from another screen - resetting camera state');
+        
+        // Reset all camera-related states
+        setIsReady(false);
+        setCameraInitialized(false);
+        setIsScanning(false);
+        setIsProcessing(false);
+        setProgress(0);
+        setShowWarning(false);
+        setHasAutoCaptured(false);
+        setRetryCount(0);
+        
+        // Clear any existing timer
+        if (autoCaptureTimer) {
+          clearTimeout(autoCaptureTimer);
+          setAutoCaptureTimer(null);
+        }
+        
+        // Set reinitializing state
+        setIsReinitializing(true);
+        
+        // Force camera remount by changing key
+        setCameraKey(prev => prev + 1);
+        
+        // Small delay to ensure camera can reinitialize properly
+        const resetTimer = setTimeout(() => {
+          setIsReinitializing(false);
+          setHasNavigatedAway(false); // Reset the flag
+          console.log('📷 Camera state reset completed');
+        }, 1000);
+        
+        return () => {
+          clearTimeout(resetTimer);
+        };
+      } else {
+        // First time loading or already on this screen
+        console.log('📷 First time loading or already on scanner screen');
+      }
+    }, [autoCaptureTimer, hasNavigatedAway])
+  );
 
   const handleAutoCapture = async () => {
     if (isScanning) return;
@@ -241,13 +292,15 @@ export default function ScannerScreen() {
       if (!res.ok || !json?.success) {
         console.log('❌ API request failed or returned error');
         // Navigate to no-match on backend errors
+        setHasNavigatedAway(true);
         router.push('/no-match');
         return;
       }
 
-      const match = Array.isArray(json.matches) && json.matches.length > 0 ? json.matches[0] : null;
+      const match = json.match || (Array.isArray(json.matches) && json.matches.length > 0 ? json.matches[0] : null);
       if (!match) {
         console.log('❌ No matches found in response');
+        setHasNavigatedAway(true);
         router.push('/no-match');
         return;
       }
@@ -261,7 +314,10 @@ export default function ScannerScreen() {
             : `${API_CONFIG.BASE_URL}/uploads/media/${match.file_path}`)
         : '';
       console.log('🎬 Navigating to media player with:', { url: mediaUrl, type: mediaType });
+      console.log('🔍 Debug - file_path:', match.file_path, 'BASE_URL:', API_CONFIG.BASE_URL);
 
+      // Set flag to indicate we're navigating away
+      setHasNavigatedAway(true);
       router.push({ pathname: '/media-player', params: { url: mediaUrl, type: mediaType } });
     } catch (e) {
       console.log('❌ Scan process error:', e);
@@ -330,13 +386,15 @@ export default function ScannerScreen() {
 
       if (!apiRes.ok || !json?.success) {
         console.log('❌ API request failed or returned error');
+        setHasNavigatedAway(true);
         router.push('/no-match');
         return;
       }
 
-      const match = Array.isArray(json.matches) && json.matches.length > 0 ? json.matches[0] : null;
+      const match = json.match || (Array.isArray(json.matches) && json.matches.length > 0 ? json.matches[0] : null);
       if (!match) {
         console.log('❌ No matches found in response');
+        setHasNavigatedAway(true);
         router.push('/no-match');
         return;
       }
@@ -350,7 +408,10 @@ export default function ScannerScreen() {
             : `${API_CONFIG.BASE_URL}/uploads/media/${match.file_path}`)
         : '';
       console.log('🎬 Navigating to media player with:', { url: mediaUrl, type: mediaType });
+      console.log('🔍 Debug - file_path:', match.file_path, 'BASE_URL:', API_CONFIG.BASE_URL);
 
+      // Set flag to indicate we're navigating away
+      setHasNavigatedAway(true);
       router.push({ pathname: '/media-player', params: { url: mediaUrl, type: mediaType } });
     } catch (e) {
       console.log('❌ API call error with selected image:', e);
@@ -378,6 +439,7 @@ export default function ScannerScreen() {
       {permission?.granted ? (
         <>
           <CameraView
+            key={cameraKey}
             style={StyleSheet.absoluteFill}
             onCameraReady={() => {
               console.log('📷 Camera is ready');
@@ -505,10 +567,12 @@ export default function ScannerScreen() {
                   <Text style={styles.processingText}>Processing… {progress}%</Text>
                 </View>
               )}
-              {!cameraInitialized && !isProcessing && (
+              {(!cameraInitialized || isReinitializing) && !isProcessing && (
                 <View style={styles.processingBox}>
                   <ActivityIndicator color="#fff" size="small" />
-                  <Text style={styles.processingText}>Initializing camera...</Text>
+                  <Text style={styles.processingText}>
+                    {isReinitializing ? 'Reinitializing camera...' : 'Initializing camera...'}
+                  </Text>
                 </View>
               )}
             </View>
