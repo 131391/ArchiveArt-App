@@ -1,6 +1,6 @@
 export const API_CONFIG = {
-  // BASE_URL: 'https://archivart.onrender.com',
-  BASE_URL: 'http://172.20.10.5:3000',
+  BASE_URL: 'https://archivart.onrender.com',
+  // BASE_URL: 'http://172.20.10.5:3000',
   MATCH_ENDPOINT: '/api/media/match',
 };
 
