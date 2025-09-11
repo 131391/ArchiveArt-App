@@ -18,6 +18,8 @@ export default function ScannerScreen() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [autoCaptureTimer, setAutoCaptureTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [maxRetries] = useState(3);
   const cameraRef = useRef<any>(null);
 
   // Animated scan line
@@ -64,11 +66,11 @@ export default function ScannerScreen() {
   // Auto-capture timer effect (run once when ready)
   useEffect(() => {
     if (isReady && !isScanning && !hasAutoCaptured) {
-      // Give camera more time to stabilize on iOS
+      // Give camera more time to stabilize on iOS - increased delay for production builds
       const timer = setTimeout(() => {
         console.log('⏰ Auto-capture timer triggered');
         handleAutoCapture();
-      }, 3000); // Increased from 2000ms to 3000ms for iOS stability
+      }, 5000); // Increased to 5000ms for iOS production build stability
 
       setAutoCaptureTimer(timer);
 
@@ -121,14 +123,49 @@ export default function ScannerScreen() {
         }
         
         try {
-          // Use the correct CameraView API for expo-camera v16+
-          const result = await cam.takePicture({ 
-            quality: 0.8, // Higher quality for better recognition
-            skipProcessing: false, // Allow processing for better results
-            base64: false,
-            exif: false
-          });
-          console.log('✅ Camera capture successful:', result);
+          // iOS-specific camera capture with multiple fallback methods
+          let result = null;
+          
+          // Method 1: Try takePicture with iOS-optimized settings
+          try {
+            result = await cam.takePicture({ 
+              quality: 0.9, // Higher quality for iOS
+              skipProcessing: false,
+              base64: false,
+              exif: false,
+              additionalExif: {}
+            });
+            console.log('✅ Camera capture successful (Method 1):', result);
+          } catch (method1Error) {
+            console.log('⚠️ Method 1 failed, trying Method 2:', method1Error);
+            
+            // Method 2: Try with different quality settings
+            try {
+              result = await cam.takePicture({ 
+                quality: 0.7,
+                skipProcessing: true, // Skip processing for iOS compatibility
+                base64: false,
+                exif: false
+              });
+              console.log('✅ Camera capture successful (Method 2):', result);
+            } catch (method2Error) {
+              console.log('⚠️ Method 2 failed, trying Method 3:', method2Error);
+              
+              // Method 3: Try with minimal settings
+              try {
+                result = await cam.takePicture({ 
+                  quality: 0.5,
+                  skipProcessing: true,
+                  base64: false
+                });
+                console.log('✅ Camera capture successful (Method 3):', result);
+              } catch (method3Error) {
+                console.log('❌ All camera capture methods failed:', method3Error);
+                throw method3Error;
+              }
+            }
+          }
+          
           return result;
         } catch (error) {
           console.log('❌ Camera capture error:', error);
@@ -139,6 +176,18 @@ export default function ScannerScreen() {
       if (!photo || !('uri' in photo) || !photo.uri) {
         console.log('❌ Failed to capture image - photo object:', photo);
         console.log('❌ Camera state - isReady:', isReady, 'permission granted:', permission?.granted);
+        console.log('🔄 Retry count:', retryCount, 'Max retries:', maxRetries);
+        
+        // Retry logic for iOS production builds
+        if (retryCount < maxRetries) {
+          console.log('🔄 Retrying capture in 2 seconds...');
+          setRetryCount(prev => prev + 1);
+          setTimeout(() => {
+            captureAndProcessImage();
+          }, 2000);
+          return;
+        }
+        
         // Show centering warning only for camera capture issues
         setShowWarning(true);
         setTimeout(() => setShowWarning(false), 3000);
@@ -329,7 +378,11 @@ export default function ScannerScreen() {
             style={StyleSheet.absoluteFill}
             onCameraReady={() => {
               console.log('📷 Camera is ready');
-              setIsReady(true);
+              // Add extra delay for iOS stability
+              setTimeout(() => {
+                setIsReady(true);
+                console.log('📷 Camera ready state set to true');
+              }, 1000);
             }}
             onMountError={(error) => {
               console.log('❌ Camera mount error:', error);
@@ -340,6 +393,8 @@ export default function ScannerScreen() {
             enableTorch={isTorchOn}
             facing="back"
             mode="picture"
+            // iOS-specific optimizations
+            pictureSize="1920x1080"
             ref={cameraRef}
           />
           <View style={styles.overlay} pointerEvents="box-none">
@@ -368,6 +423,16 @@ export default function ScannerScreen() {
                 <Text style={styles.warningText}>
                   Camera issue detected. Please try again or use the gallery option.
                 </Text>
+                <TouchableOpacity 
+                  style={styles.retryButton}
+                  onPress={() => {
+                    setRetryCount(0);
+                    setShowWarning(false);
+                    captureAndProcessImage();
+                  }}
+                >
+                  <Text style={styles.retryButtonText}>Retry Capture</Text>
+                </TouchableOpacity>
               </View>
             )}
             <View style={styles.bottomControls}>
@@ -501,6 +566,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     textAlign: 'center',
+    marginBottom: 12,
+  },
+  retryButton: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.4)',
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   processingBox: {
     position: 'absolute',
