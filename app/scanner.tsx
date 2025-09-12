@@ -69,7 +69,7 @@ export default function ScannerScreen() {
 
   // Auto-capture timer effect (run once when ready)
   useEffect(() => {
-    if (isReady && cameraInitialized && !isScanning && !hasAutoCaptured) {
+    if (isReady && cameraInitialized && !isScanning && !hasAutoCaptured && !hasNavigatedAway) {
       // Give camera more time to stabilize on iOS - increased delay for production builds
       const timer = setTimeout(() => {
         console.log('⏰ Auto-capture timer triggered');
@@ -82,7 +82,7 @@ export default function ScannerScreen() {
         if (timer) clearTimeout(timer);
       };
     }
-  }, [isReady, cameraInitialized, isScanning, hasAutoCaptured]);
+  }, [isReady, cameraInitialized, isScanning, hasAutoCaptured, hasNavigatedAway]);
 
   // Cleanup timer on unmount
   useEffect(() => {
@@ -97,11 +97,11 @@ export default function ScannerScreen() {
   useFocusEffect(
     useCallback(() => {
       console.log('📷 Scanner screen focused - hasNavigatedAway:', hasNavigatedAway);
-      
+
       // Only reset if we actually navigated away and came back
       if (hasNavigatedAway) {
         console.log('📷 Returning from another screen - resetting camera state');
-        
+
         // Reset all camera-related states
         setIsReady(false);
         setCameraInitialized(false);
@@ -111,26 +111,26 @@ export default function ScannerScreen() {
         setShowWarning(false);
         setHasAutoCaptured(false);
         setRetryCount(0);
-        
+
         // Clear any existing timer
         if (autoCaptureTimer) {
           clearTimeout(autoCaptureTimer);
           setAutoCaptureTimer(null);
         }
-        
+
         // Set reinitializing state
         setIsReinitializing(true);
-        
+
         // Force camera remount by changing key
         setCameraKey(prev => prev + 1);
-        
+
         // Small delay to ensure camera can reinitialize properly
         const resetTimer = setTimeout(() => {
           setIsReinitializing(false);
           setHasNavigatedAway(false); // Reset the flag
           console.log('📷 Camera state reset completed');
         }, 1000);
-        
+
         return () => {
           clearTimeout(resetTimer);
         };
@@ -293,7 +293,13 @@ export default function ScannerScreen() {
         console.log('❌ API request failed or returned error');
         // Navigate to no-match on backend errors
         setHasNavigatedAway(true);
-        router.push('/no-match');
+        try {
+          router.push('/no-match');
+          console.log('✅ Navigation to no-match successful');
+        } catch (navError) {
+          console.log('❌ Navigation error:', navError);
+          router.replace('/no-match');
+        }
         return;
       }
 
@@ -301,7 +307,13 @@ export default function ScannerScreen() {
       if (!match) {
         console.log('❌ No matches found in response');
         setHasNavigatedAway(true);
-        router.push('/no-match');
+        try {
+          router.push('/no-match');
+          console.log('✅ Navigation to no-match successful');
+        } catch (navError) {
+          console.log('❌ Navigation error:', navError);
+          router.replace('/no-match');
+        }
         return;
       }
 
@@ -318,9 +330,17 @@ export default function ScannerScreen() {
 
       // Set flag to indicate we're navigating away
       setHasNavigatedAway(true);
-      router.push({ pathname: '/media-player', params: { url: mediaUrl, type: mediaType } });
+      try {
+        router.push({ pathname: '/media-player', params: { url: mediaUrl, type: mediaType } });
+        console.log('✅ Navigation to media player successful');
+      } catch (navError) {
+        console.log('❌ Navigation error:', navError);
+        // Fallback navigation
+        router.replace({ pathname: '/media-player', params: { url: mediaUrl, type: mediaType } });
+      }
     } catch (e) {
       console.log('❌ Scan process error:', e);
+      setHasNavigatedAway(true);
       router.push('/no-match');
     } finally {
       setIsScanning(false);
