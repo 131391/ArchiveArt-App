@@ -1,5 +1,7 @@
+import { useAuth } from '@/contexts/AuthContext';
+import { router } from 'expo-router';
 import React from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 function SettingsCard({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
@@ -11,12 +13,39 @@ function SettingsCard({ title, subtitle }: { title: string; subtitle?: string })
 }
 
 export default function ProfileScreen() {
+  const { user, logout } = useAuth();
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await logout();
+              router.replace('/welcome');
+            } catch (error) {
+              Alert.alert('Error', 'Failed to logout. Please try again.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Image source={require('@/assets/images/ALogo.png')} style={styles.avatar} />
-        <Text style={styles.name}>Alex Doe</Text>
-        <Text style={styles.email}>alex@example.com</Text>
+        <Text style={styles.name}>{user?.name || 'User'}</Text>
+        <Text style={styles.email}>{user?.email || 'user@example.com'}</Text>
         <TouchableOpacity style={styles.editBtn}>
           <Text style={styles.editText}>Edit Profile</Text>
         </TouchableOpacity>
@@ -27,7 +56,7 @@ export default function ProfileScreen() {
         <SettingsCard title="Help" subtitle="FAQs and support" />
         <SettingsCard title="About" subtitle="Version 1.0.0" />
       </View>
-      <TouchableOpacity style={styles.logoutBtn}>
+      <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
         <Text style={styles.logoutText}>Logout</Text>
       </TouchableOpacity>
     </View>

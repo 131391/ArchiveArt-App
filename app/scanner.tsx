@@ -1,4 +1,6 @@
+import { AuthGuard } from '@/components/AuthGuard';
 import { API_CONFIG, buildUrl } from '@/constants/Api';
+import AuthService from '@/services/AuthService';
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
@@ -264,7 +266,7 @@ export default function ScannerScreen() {
       console.log('🌐 Hitting API:', apiUrl);
       console.log('📤 Request payload:', { threshold: '5', image: 'file object' });
 
-      const res = await fetch(apiUrl, {
+      const res = await AuthService.authenticatedRequest('/api/media/match', {
         method: 'POST',
         headers: {
           // Let fetch set proper multipart boundary
@@ -359,7 +361,7 @@ export default function ScannerScreen() {
         setProgress((p) => (p < 90 ? p + 5 : p));
       }, 200);
 
-      const apiRes = await fetch(apiUrl, {
+      const apiRes = await AuthService.authenticatedRequest('/api/media/match', {
         method: 'POST',
         headers: {
           // Let fetch set proper multipart boundary
@@ -428,7 +430,8 @@ export default function ScannerScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <AuthGuard>
+      <View style={styles.container}>
       <View style={styles.topBar}>
         <TouchableOpacity onPress={() => (router.canGoBack() ? router.back() : router.replace('/welcome'))} style={styles.topBtn}>
           <Ionicons name="chevron-back" size={24} color="#fff" />
@@ -583,7 +586,8 @@ export default function ScannerScreen() {
           <Text style={{ color: '#fff' }}>Camera permission is required.</Text>
         </View>
       )}
-    </View>
+      </View>
+    </AuthGuard>
   );
 }
 

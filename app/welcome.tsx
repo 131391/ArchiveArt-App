@@ -1,14 +1,38 @@
 import { LinkButton } from '@/components/ui/LinkButton';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
+import { useAuth } from '@/contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import React from 'react';
-import { Dimensions, Image, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import React, { useEffect } from 'react';
+import { ActivityIndicator, Dimensions, Image, StyleSheet, Text, useColorScheme, View } from 'react-native';
 
 export default function WelcomeScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
+  const { isAuthenticated, isLoading } = useAuth();
+
+  // Redirect to main app if user is already authenticated
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      router.replace('/(tabs)');
+    }
+  }, [isAuthenticated, isLoading]);
+
+  // Show loading screen while checking authentication
+  if (isLoading) {
+    return (
+      <LinearGradient
+        colors={isDark ? ['#0F172A', '#1E293B', '#334155'] : ['#F8FAFC', '#E2E8F0', '#CBD5E1']}
+        style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}
+      >
+        <ActivityIndicator size="large" color={isDark ? '#3B82F6' : '#2563EB'} />
+        <Text style={[styles.loadingText, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>
+          Loading...
+        </Text>
+      </LinearGradient>
+    );
+  }
 
   return (
     <LinearGradient
@@ -236,6 +260,11 @@ const styles = StyleSheet.create({
   },
   secondaryButton: {
     marginTop: 8,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 
