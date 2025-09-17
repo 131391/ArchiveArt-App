@@ -29,68 +29,70 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const initializeAuth = async () => {
     try {
+      console.log('🔐 Initializing authentication...');
       setIsLoading(true);
       
       // Check if user is authenticated
       const isAuth = await AuthService.isAuthenticated();
+      console.log('🔐 Is authenticated:', isAuth);
       
       if (isAuth) {
         // Get current user data
         const currentUser = await AuthService.getCurrentUser();
+        console.log('🔐 Current user:', currentUser);
         setUser(currentUser);
         
-        // Optionally refresh user profile from server
-        try {
-          const freshUser = await AuthService.getUserProfile();
-          setUser(freshUser);
-        } catch (error) {
-          console.log('Could not refresh user profile, using cached data');
-        }
+        // Skip server profile refresh during initialization to avoid API errors
+        // The user profile can be refreshed later when needed
+        console.log('🔐 Using cached user data for initialization');
+      } else {
+        console.log('🔐 User is not authenticated');
       }
     } catch (error) {
-      console.error('Auth initialization error:', error);
+      console.error('🔐 Auth initialization error:', error);
       // Clear any invalid auth state
       await AuthService.logout();
       setUser(null);
     } finally {
+      console.log('🔐 Auth initialization completed');
       setIsLoading(false);
     }
   };
 
-  const login = async (credentials: LoginCredentials) => {
+  const login = async (credentials: LoginCredentials): Promise<Error | null> => {
     try {
       setIsLoading(true);
       const authResponse = await AuthService.login(credentials);
       setUser(authResponse.user);
+      return null; // Success, no error
     } catch (error) {
-      console.error('Login error:', error);
-      throw error;
+      return error instanceof Error ? error : new Error('An unexpected error occurred during login.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const register = async (userData: RegisterData) => {
+  const register = async (userData: RegisterData): Promise<Error | null> => {
     try {
       setIsLoading(true);
       const authResponse = await AuthService.register(userData);
       setUser(authResponse.user);
+      return null; // Success, no error
     } catch (error) {
-      console.error('Registration error:', error);
-      throw error;
+      return error instanceof Error ? error : new Error('An unexpected error occurred during registration.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const googleLogin = async (googleData: GoogleAuthData) => {
+  const googleLogin = async (googleData: GoogleAuthData): Promise<Error | null> => {
     try {
       setIsLoading(true);
       const authResponse = await AuthService.googleLogin(googleData);
       setUser(authResponse.user);
+      return null; // Success, no error
     } catch (error) {
-      console.error('Google login error:', error);
-      throw error;
+      return error instanceof Error ? error : new Error('An unexpected error occurred during Google login.');
     } finally {
       setIsLoading(false);
     }

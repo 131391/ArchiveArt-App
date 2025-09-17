@@ -2,9 +2,10 @@ import { IconTextInput } from '@/components/ui/IconTextInput';
 import { LinkButton } from '@/components/ui/LinkButton';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { useAuth } from '@/contexts/AuthContext';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function RegisterScreen() {
   const [name, setName] = useState('');
@@ -35,7 +36,7 @@ export default function RegisterScreen() {
         password,
         mobile: mobile || undefined,
       });
-      router.replace('/(tabs)');
+      router.replace('/welcome');
     } catch (error) {
       Alert.alert('Registration Failed', error instanceof Error ? error.message : 'An error occurred');
     } finally {
@@ -56,7 +57,7 @@ export default function RegisterScreen() {
       };
       
       await googleLogin(mockGoogleData);
-      router.replace('/(tabs)');
+      router.replace('/welcome');
     } catch (error) {
       Alert.alert('Google Login Failed', error instanceof Error ? error.message : 'An error occurred');
     } finally {
@@ -94,13 +95,35 @@ export default function RegisterScreen() {
         <View style={styles.divider} />
       </View>
       <View style={styles.socialRow}>
-        <PrimaryButton 
-          title={isLoading ? "Connecting..." : "Continue with Google"} 
+        {/* Google Login Button */}
+        <TouchableOpacity 
+          style={styles.googleButton}
           onPress={handleGoogleLogin}
           disabled={isLoading}
-        />
+        >
+          <View style={styles.googleIconContainer}>
+            <Ionicons name="logo-google" size={24} color="#DB4437" />
+          </View>
+          <Text style={styles.googleButtonText}>
+            {isLoading ? "Connecting..." : "Continue with Google"}
+          </Text>
+        </TouchableOpacity>
+        
         <View style={{ height: 12 }} />
-        <PrimaryButton title="Continue with Facebook" onPress={() => {}} />
+        
+        {/* Facebook Login Button */}
+        <TouchableOpacity 
+          style={styles.facebookButton}
+          onPress={() => {}}
+          disabled={isLoading}
+        >
+          <View style={styles.facebookIconContainer}>
+            <Ionicons name="logo-facebook" size={24} color="#1877F2" />
+          </View>
+          <Text style={styles.facebookButtonText}>
+            Continue with Facebook
+          </Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -141,6 +164,78 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   socialRow: {},
+  googleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#DADCE0',
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  googleIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  googleButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#3C4043',
+    flex: 1,
+    textAlign: 'center',
+  },
+  facebookButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1877F2',
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    shadowColor: '#1877F2',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  facebookIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  facebookButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    flex: 1,
+    textAlign: 'center',
+  },
 });
 
 

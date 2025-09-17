@@ -204,11 +204,38 @@ class AuthService {
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || 'Login failed');
+      let errorMessage = 'Login failed';
+      try {
+        const errorData = await response.json();
+        
+        // Handle rate limiting specifically
+        if (errorData.error && errorData.error.includes('Too many authentication attempts')) {
+          const retryAfter = errorData.retryAfter || 900;
+          const minutes = Math.ceil(retryAfter / 60);
+          errorMessage = `Too many login attempts. Please wait ${minutes} minutes before trying again.`;
+        } else {
+          errorMessage = errorData.message || errorData.error || `HTTP ${response.status}: ${response.statusText}`;
+        }
+      } catch (parseError) {
+        console.error('Failed to parse error response:', parseError);
+        errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      }
+      throw new Error(errorMessage);
     }
 
-    const data: AuthResponse = await response.json();
+    let data: AuthResponse;
+    try {
+      data = await response.json();
+    } catch (parseError) {
+      console.error('Failed to parse login response:', parseError);
+      throw new Error('Invalid response from server');
+    }
+    
+    // Validate response data
+    if (!data.accessToken || !data.refreshToken || !data.user) {
+      console.error('Invalid login response data:', data);
+      throw new Error('Invalid response data from server');
+    }
     
     // Store tokens securely
     await this.storeTokens(data.accessToken, data.refreshToken);
@@ -229,8 +256,23 @@ class AuthService {
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || 'Registration failed');
+      let errorMessage = 'Registration failed';
+      try {
+        const errorData = await response.json();
+        
+        // Handle rate limiting specifically
+        if (errorData.error && errorData.error.includes('Too many authentication attempts')) {
+          const retryAfter = errorData.retryAfter || 900;
+          const minutes = Math.ceil(retryAfter / 60);
+          errorMessage = `Too many registration attempts. Please wait ${minutes} minutes before trying again.`;
+        } else {
+          errorMessage = errorData.message || errorData.error || `HTTP ${response.status}: ${response.statusText}`;
+        }
+      } catch (parseError) {
+        console.error('Failed to parse error response:', parseError);
+        errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      }
+      throw new Error(errorMessage);
     }
 
     const data: AuthResponse = await response.json();
@@ -254,8 +296,23 @@ class AuthService {
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || 'Google login failed');
+      let errorMessage = 'Google login failed';
+      try {
+        const errorData = await response.json();
+        
+        // Handle rate limiting specifically
+        if (errorData.error && errorData.error.includes('Too many authentication attempts')) {
+          const retryAfter = errorData.retryAfter || 900;
+          const minutes = Math.ceil(retryAfter / 60);
+          errorMessage = `Too many login attempts. Please wait ${minutes} minutes before trying again.`;
+        } else {
+          errorMessage = errorData.message || errorData.error || `HTTP ${response.status}: ${response.statusText}`;
+        }
+      } catch (parseError) {
+        console.error('Failed to parse error response:', parseError);
+        errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      }
+      throw new Error(errorMessage);
     }
 
     const data: AuthResponse = await response.json();
@@ -301,7 +358,8 @@ class AuthService {
   }
 
   public async isAuthenticated(): Promise<boolean> {
-    const { accessToken } = await this.getStoredTokens();
+    const { accessToken, refreshToken } = await this.getStoredTokens();
+    console.log('🔐 Checking authentication - accessToken exists:', !!accessToken, 'refreshToken exists:', !!refreshToken);
     return !!accessToken;
   }
 

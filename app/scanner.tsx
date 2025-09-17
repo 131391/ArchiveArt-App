@@ -50,8 +50,12 @@ export default function ScannerScreen() {
   }, [scanAnim]);
 
   useEffect(() => {
+    console.log('📷 Permission status:', permission);
     if (!permission || !permission.granted) {
+      console.log('📷 Requesting camera permission...');
       requestPermission();
+    } else {
+      console.log('📷 Camera permission granted');
     }
   }, [permission]);
 
@@ -448,6 +452,8 @@ export default function ScannerScreen() {
       console.log('🏁 Image picker API call completed');
     }
   };
+
+  console.log('📷 Rendering scanner screen - permission:', permission?.granted, 'isReady:', isReady, 'cameraInitialized:', cameraInitialized);
 
   return (
     <AuthGuard>

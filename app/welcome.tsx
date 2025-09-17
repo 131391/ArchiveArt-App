@@ -1,23 +1,20 @@
-import { LinkButton } from '@/components/ui/LinkButton';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { useAuth } from '@/contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useEffect } from 'react';
-import { ActivityIndicator, Dimensions, Image, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { ActivityIndicator, Dimensions, Image, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 
 export default function WelcomeScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
 
-  // Redirect to main app if user is already authenticated
+  // No automatic redirect - show profile when authenticated, login when not
   useEffect(() => {
-    if (!isLoading && isAuthenticated) {
-      router.replace('/(tabs)');
-    }
-  }, [isAuthenticated, isLoading]);
+    console.log('🏠 Welcome screen - isAuthenticated:', isAuthenticated, 'isLoading:', isLoading, 'user:', user?.name);
+  }, [isAuthenticated, isLoading, user]);
 
   // Show loading screen while checking authentication
   if (isLoading) {
@@ -55,23 +52,36 @@ export default function WelcomeScreen() {
           <Text style={[styles.brandText, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>ArchivArt</Text>
         </View>
         <Text style={[styles.tagline, { color: isDark ? '#94A3B8' : '#64748B' }]}>AI-Powered Media Discovery</Text>
+        
+        {/* Profile Button in Top Right */}
+        {isAuthenticated && (
+          <TouchableOpacity 
+            onPress={() => router.push('/profile')}
+            style={[styles.profileTopButton, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC' }]}
+          >
+            <Ionicons name="person-circle-outline" size={24} color={isDark ? '#3B82F6' : '#2563EB'} />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Main Content */}
       <View style={styles.content}>
         {/* Hero Section */}
         <View style={styles.heroSection}>
-          <View style={styles.iconContainer}>
+          <View style={[styles.iconContainer, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC' }]}>
             <Ionicons name="scan" size={60} color={isDark ? '#3B82F6' : '#2563EB'} />
           </View>
           <Text style={[styles.title, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>
-            Discover Hidden
+            {isAuthenticated ? 'Welcome Back!' : 'Discover Hidden'}
           </Text>
           <Text style={[styles.titleAccent, { color: isDark ? '#3B82F6' : '#2563EB' }]}>
-            Media Treasures
+            {isAuthenticated ? 'Ready to Scan?' : 'Media Treasures'}
           </Text>
           <Text style={[styles.subtitle, { color: isDark ? '#94A3B8' : '#64748B' }]}>
-            Point your camera at any image and instantly discover related videos, audio, and multimedia content using advanced AI technology.
+            {isAuthenticated 
+              ? 'Continue your journey of discovering amazing media content with AI-powered scanning technology.'
+              : 'Point your camera at any image and instantly discover related videos, audio, and multimedia content using advanced AI technology.'
+            }
           </Text>
         </View>
 
@@ -100,16 +110,21 @@ export default function WelcomeScreen() {
 
       {/* Actions */}
       <View style={styles.actions}>
-        <PrimaryButton 
-          title="Start Scanning" 
-          onPress={() => router.push('/scanner')}
-          style={styles.primaryButton}
-        />
-        <LinkButton 
-          title="Sign In / Create Account" 
-          onPress={() => router.push('/auth/login')} 
-          style={styles.secondaryButton}
-        />
+        {isAuthenticated ? (
+          // Authenticated User - Only Start Scanning Button
+          <PrimaryButton 
+            title="Start Scanning" 
+            onPress={() => router.push('/scanner')}
+            style={styles.primaryButton}
+          />
+        ) : (
+          // Non-authenticated User Actions - Only Sign In Button
+          <PrimaryButton 
+            title="Sign In / Create Account" 
+            onPress={() => router.push('/auth/login')} 
+            style={styles.primaryButton}
+          />
+        )}
       </View>
     </LinearGradient>
   );
@@ -160,6 +175,7 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     marginBottom: 40,
+    position: 'relative',
   },
   brandContainer: {
     flexDirection: 'row',
@@ -190,6 +206,21 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     textAlign: 'center',
   },
+  profileTopButton: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
   content: {
     flex: 1,
     justifyContent: 'center',
@@ -202,12 +233,14 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 30,
-    borderWidth: 2,
-    borderColor: 'rgba(59, 130, 246, 0.2)',
+    shadowColor: '#3B82F6',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
   },
   title: {
     fontSize: 36,

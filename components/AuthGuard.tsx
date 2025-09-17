@@ -11,8 +11,11 @@ interface AuthGuardProps {
 export const AuthGuard: React.FC<AuthGuardProps> = ({ children, fallback }) => {
   const { isAuthenticated, isLoading } = useAuth();
 
+  console.log('🔐 AuthGuard - isAuthenticated:', isAuthenticated, 'isLoading:', isLoading);
+
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
+      console.log('🔐 AuthGuard - Redirecting to welcome screen');
       router.replace('/welcome');
     }
   }, [isAuthenticated, isLoading]);
