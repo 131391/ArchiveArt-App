@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
-import { Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { Alert, Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 
 export default function ProfileScreen() {
   const colorScheme = useColorScheme();
@@ -77,12 +77,6 @@ export default function ProfileScreen() {
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
-          onPress={() => router.back()} 
-          style={[styles.backButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]}
-        >
-          <Ionicons name="arrow-back" size={24} color={isDark ? '#F1F5F9' : '#0F172A'} />
-        </TouchableOpacity>
         <View style={styles.headerSpacer} />
         <TouchableOpacity style={[styles.editButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]}>
           <Ionicons name="create-outline" size={20} color={isDark ? '#3B82F6' : '#2563EB'} />
@@ -92,10 +86,6 @@ export default function ProfileScreen() {
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Hero Profile Section */}
         <View style={styles.heroSection}>
-          <Text style={[styles.pageTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>
-            Profile
-          </Text>
-          
           <View style={styles.profileImageContainer}>
             <LinearGradient
               colors={['#3B82F6', '#1D4ED8', '#1E40AF']}
@@ -329,22 +319,10 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     paddingHorizontal: 20,
     paddingTop: 60,
     paddingBottom: 20,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   headerSpacer: {
     flex: 1,
@@ -367,47 +345,41 @@ const styles = StyleSheet.create({
   },
   heroSection: {
     alignItems: 'center',
-    marginBottom: 32,
-    paddingTop: 20,
-  },
-  pageTitle: {
-    fontSize: 32,
-    fontWeight: '900',
-    marginBottom: 24,
-    textAlign: 'center',
-    letterSpacing: -0.5,
+    marginBottom: 40,
+    paddingTop: 10,
   },
   profileImageContainer: {
     position: 'relative',
-    marginBottom: 20,
+    marginBottom: 24,
   },
   profileImageGradient: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#3B82F6',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.4,
+    shadowRadius: 20,
+    elevation: 12,
   },
   onlineIndicator: {
     position: 'absolute',
-    bottom: 8,
-    right: 8,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 3,
+    bottom: 12,
+    right: 12,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 4,
     borderColor: '#fff',
   },
   userName: {
-    fontSize: 28,
-    fontWeight: '800',
+    fontSize: 32,
+    fontWeight: '900',
     marginBottom: 8,
     textAlign: 'center',
+    letterSpacing: -0.5,
   },
   userEmail: {
     fontSize: 16,
@@ -435,8 +407,8 @@ const styles = StyleSheet.create({
   },
   statsContainer: {
     flexDirection: 'row',
-    marginBottom: 32,
-    gap: 12,
+    marginBottom: 40,
+    gap: 16,
   },
   statCard: {
     flex: 1,
@@ -469,7 +441,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   quickActionsContainer: {
-    marginBottom: 32,
+    marginBottom: 40,
   },
   sectionTitle: {
     fontSize: 20,
@@ -480,7 +452,7 @@ const styles = StyleSheet.create({
   quickActionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: 16,
   },
   quickActionCard: {
     width: (width - 64) / 2,
@@ -507,7 +479,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   optionsContainer: {
-    marginBottom: 32,
+    marginBottom: 40,
   },
   optionCard: {
     flexDirection: 'row',
