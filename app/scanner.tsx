@@ -62,7 +62,7 @@ export default function ScannerScreen() {
   useEffect(() => {
     const onBackPress = () => {
       try {
-        router.canGoBack() ? router.back() : router.replace('/welcome');
+        router.replace('/welcome');
       } catch {
         router.replace('/welcome');
       }
@@ -562,7 +562,7 @@ export default function ScannerScreen() {
     <AuthGuard>
       <View style={styles.container}>
       <View style={styles.topBar}>
-        <TouchableOpacity onPress={() => (router.canGoBack() ? router.back() : router.replace('/welcome'))} style={styles.topBtn}>
+        <TouchableOpacity onPress={() => router.replace('/welcome')} style={styles.topBtn}>
           <Ionicons name="chevron-back" size={24} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.appName}>ArchivArt</Text>
