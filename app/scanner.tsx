@@ -377,8 +377,8 @@ export default function ScannerScreen() {
       // @ts-ignore - RN FormData supports { uri, name, type }
       form.append('image', file);
 
-      const apiUrl = buildUrl(API_ENDPOINTS.MEDIA.MATCH);
-      console.log('🌐 Hitting API with selected image:', apiUrl);
+      const galleryApiUrl = buildUrl(API_ENDPOINTS.MEDIA.MATCH);
+      console.log('🌐 Hitting API with selected image:', galleryApiUrl);
       console.log('📤 Request payload:', { threshold: '5', image: 'file object' });
 
       setIsProcessing(true);
@@ -387,8 +387,8 @@ export default function ScannerScreen() {
         setProgress((p) => (p < 90 ? p + 5 : p));
       }, 200);
 
-      const apiUrl = buildUrl(API_ENDPOINTS.MEDIA.MATCH);
-      console.log('🌐 Hitting API (selected image):', apiUrl);
+      const selectedImageApiUrl = buildUrl(API_ENDPOINTS.MEDIA.MATCH);
+      console.log('🌐 Hitting API (selected image):', selectedImageApiUrl);
       console.log('🔐 MOCK_MODE:', API_CONFIG.MOCK_MODE);
       console.log('🔐 BASE_URL:', API_CONFIG.BASE_URL);
 
