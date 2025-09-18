@@ -269,6 +269,8 @@ export default function ScannerScreen() {
       const apiUrl = buildUrl(API_ENDPOINTS.MEDIA.MATCH);
       console.log('🌐 Hitting API:', apiUrl);
       console.log('📤 Request payload:', { threshold: '5', image: 'file object' });
+      console.log('🔐 MOCK_MODE:', API_CONFIG.MOCK_MODE);
+      console.log('🔐 BASE_URL:', API_CONFIG.BASE_URL);
 
       const res = await AuthService.authenticatedRequest(API_ENDPOINTS.MEDIA.MATCH, {
         method: 'POST',
@@ -384,6 +386,11 @@ export default function ScannerScreen() {
       const progTimer = setInterval(() => {
         setProgress((p) => (p < 90 ? p + 5 : p));
       }, 200);
+
+      const apiUrl = buildUrl(API_ENDPOINTS.MEDIA.MATCH);
+      console.log('🌐 Hitting API (selected image):', apiUrl);
+      console.log('🔐 MOCK_MODE:', API_CONFIG.MOCK_MODE);
+      console.log('🔐 BASE_URL:', API_CONFIG.BASE_URL);
 
       const apiRes = await AuthService.authenticatedRequest(API_ENDPOINTS.MEDIA.MATCH, {
         method: 'POST',

@@ -98,8 +98,13 @@ class AuthService {
     const headers = {
       ...options.headers,
       'Authorization': `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
     };
+
+    // Only set Content-Type for non-FormData requests
+    // For FormData (file uploads), let the browser set the multipart boundary
+    if (!(options.body instanceof FormData)) {
+      headers['Content-Type'] = 'application/json';
+    }
 
     // Add refresh token header for automatic refresh
     if (refreshToken) {
