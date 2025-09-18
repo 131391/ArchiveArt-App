@@ -26,7 +26,10 @@ export default function MediaPlayerScreen() {
     console.log('🎬 Media Player - Received params:', params);
     console.log('🎬 Media Player - URL:', url);
     console.log('🎬 Media Player - Type:', type);
-  }, [params, url, type]);
+    console.log('🎬 Media Player - Is Audio:', isAudio);
+    console.log('🎬 Media Player - URL length:', url.length);
+    console.log('🎬 Media Player - URL valid:', !!url && url.length > 0);
+  }, [params, url, type, isAudio]);
 
   useEffect(() => {
     if (isAudio) {
@@ -215,21 +218,36 @@ export default function MediaPlayerScreen() {
           <AudioVisualizer />
         </View>
       ) : (
-        <Video
-          ref={videoRef}
-          style={styles.video}
-          source={{ uri: url || 'https://www.w3schools.com/html/mov_bbb.mp4' }}
-          resizeMode="contain"
-          shouldPlay={isPlaying}
-          useNativeControls={false}
-          isLooping
-          onError={(error) => {
-            console.log('❌ Video Error:', error);
-          }}
-          onLoad={(status) => {
-            console.log('✅ Video Loaded:', status);
-          }}
-        />
+        <View style={styles.videoContainer}>
+          {url ? (
+            <Video
+              ref={videoRef}
+              style={styles.video}
+              source={{ uri: url }}
+              resizeMode="contain"
+              shouldPlay={isPlaying}
+              useNativeControls={false}
+              isLooping
+              onError={(error) => {
+                console.log('❌ Video Error:', error);
+                console.log('❌ Video URL that failed:', url);
+              }}
+              onLoad={(status) => {
+                console.log('✅ Video Loaded:', status);
+                console.log('✅ Video URL loaded:', url);
+              }}
+              onLoadStart={() => {
+                console.log('🔄 Video loading started for URL:', url);
+              }}
+            />
+          ) : (
+            <View style={styles.noVideoContainer}>
+              <Ionicons name="videocam-off" size={64} color="#666" />
+              <Text style={styles.noVideoText}>No video URL provided</Text>
+              <Text style={styles.noVideoSubtext}>Please try scanning again</Text>
+            </View>
+          )}
+        </View>
       )}
       <View style={styles.controls}>
         <TouchableOpacity onPress={handlePlayPause} style={styles.controlBtn}>
@@ -263,7 +281,32 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     zIndex: 10,
   },
-  video: { width: '100%', height: '70%' },
+  videoContainer: { 
+    width: '100%', 
+    height: '70%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  video: { width: '100%', height: '100%' },
+  noVideoContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  noVideoText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  noVideoSubtext: {
+    color: '#ccc',
+    fontSize: 14,
+    marginTop: 8,
+    textAlign: 'center',
+  },
   controls: {
     position: 'absolute',
     bottom: 40,
