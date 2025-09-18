@@ -360,16 +360,29 @@ export default function ScannerScreen() {
       console.log('✅ Match found:', match);
       const mediaType = (match.media_type || '').toLowerCase();
       console.log('🔍 Raw match data:', JSON.stringify(match, null, 2));
-      // Build full media URL - API returns file_path like "/uploads/media/filename.mp4"
+      // Build full media URL - API returns file_path like "filename.mp4" or "/uploads/media/filename.mp4"
       const mediaUrl = match.file_path
         ? (match.file_path.startsWith('http')
             ? match.file_path
-            : `${API_CONFIG.BASE_URL}${match.file_path}`)
+            : match.file_path.startsWith('/uploads/media/')
+            ? `${API_CONFIG.BASE_URL}${match.file_path}`
+            : `${API_CONFIG.BASE_URL}/uploads/media/${match.file_path}`)
         : '';
       console.log('🎬 Navigating to media player with:', { url: mediaUrl, type: mediaType });
       console.log('🔍 Debug - file_path:', match.file_path, 'BASE_URL:', API_CONFIG.BASE_URL);
       console.log('🔍 Debug - constructed mediaUrl:', mediaUrl);
       console.log('🔍 Debug - mediaType:', mediaType);
+      
+      // Validate URL construction
+      try {
+        new URL(mediaUrl);
+        console.log('✅ URL validation passed:', mediaUrl);
+      } catch (urlError) {
+        console.log('❌ URL validation failed:', urlError);
+        console.log('❌ Invalid URL:', mediaUrl);
+        console.log('❌ file_path was:', match.file_path);
+        console.log('❌ BASE_URL was:', API_CONFIG.BASE_URL);
+      }
 
       // Set flag to indicate we're navigating away
       setHasNavigatedAway(true);
@@ -502,16 +515,29 @@ export default function ScannerScreen() {
       console.log('✅ Match found:', match);
       const mediaType = (match.media_type || '').toLowerCase();
       console.log('🔍 Raw match data:', JSON.stringify(match, null, 2));
-      // Build full media URL - API returns file_path like "/uploads/media/filename.mp4"
+      // Build full media URL - API returns file_path like "filename.mp4" or "/uploads/media/filename.mp4"
       const mediaUrl = match.file_path
         ? (match.file_path.startsWith('http')
             ? match.file_path
-            : `${API_CONFIG.BASE_URL}${match.file_path}`)
+            : match.file_path.startsWith('/uploads/media/')
+            ? `${API_CONFIG.BASE_URL}${match.file_path}`
+            : `${API_CONFIG.BASE_URL}/uploads/media/${match.file_path}`)
         : '';
       console.log('🎬 Navigating to media player with:', { url: mediaUrl, type: mediaType });
       console.log('🔍 Debug - file_path:', match.file_path, 'BASE_URL:', API_CONFIG.BASE_URL);
       console.log('🔍 Debug - constructed mediaUrl:', mediaUrl);
       console.log('🔍 Debug - mediaType:', mediaType);
+      
+      // Validate URL construction
+      try {
+        new URL(mediaUrl);
+        console.log('✅ URL validation passed:', mediaUrl);
+      } catch (urlError) {
+        console.log('❌ URL validation failed:', urlError);
+        console.log('❌ Invalid URL:', mediaUrl);
+        console.log('❌ file_path was:', match.file_path);
+        console.log('❌ BASE_URL was:', API_CONFIG.BASE_URL);
+      }
 
       // Set flag to indicate we're navigating away
       setHasNavigatedAway(true);
