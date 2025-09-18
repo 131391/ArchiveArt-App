@@ -1,5 +1,5 @@
 import { AuthGuard } from '@/components/AuthGuard';
-import { API_CONFIG, buildUrl } from '@/constants/Api';
+import { API_CONFIG, API_ENDPOINTS, buildUrl } from '@/constants/Api';
 import AuthService from '@/services/AuthService';
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -266,11 +266,11 @@ export default function ScannerScreen() {
       // @ts-ignore - RN FormData supports { uri, name, type }
       form.append('image', file);
 
-      const apiUrl = buildUrl(API_CONFIG.MATCH_ENDPOINT);
+      const apiUrl = buildUrl(API_ENDPOINTS.MEDIA.MATCH);
       console.log('🌐 Hitting API:', apiUrl);
       console.log('📤 Request payload:', { threshold: '5', image: 'file object' });
 
-      const res = await AuthService.authenticatedRequest('/api/media/match', {
+      const res = await AuthService.authenticatedRequest(API_ENDPOINTS.MEDIA.MATCH, {
         method: 'POST',
         headers: {
           // Let fetch set proper multipart boundary
@@ -375,7 +375,7 @@ export default function ScannerScreen() {
       // @ts-ignore - RN FormData supports { uri, name, type }
       form.append('image', file);
 
-      const apiUrl = buildUrl(API_CONFIG.MATCH_ENDPOINT);
+      const apiUrl = buildUrl(API_ENDPOINTS.MEDIA.MATCH);
       console.log('🌐 Hitting API with selected image:', apiUrl);
       console.log('📤 Request payload:', { threshold: '5', image: 'file object' });
 
@@ -385,7 +385,7 @@ export default function ScannerScreen() {
         setProgress((p) => (p < 90 ? p + 5 : p));
       }, 200);
 
-      const apiRes = await AuthService.authenticatedRequest('/api/media/match', {
+      const apiRes = await AuthService.authenticatedRequest(API_ENDPOINTS.MEDIA.MATCH, {
         method: 'POST',
         headers: {
           // Let fetch set proper multipart boundary

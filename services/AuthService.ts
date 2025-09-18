@@ -1,4 +1,4 @@
-import { buildUrl } from '@/constants/Api';
+import { API_CONFIG, API_ENDPOINTS, buildUrl } from '@/constants/Api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface User {
@@ -166,7 +166,7 @@ class AuthService {
 
   private async performTokenRefresh(refreshToken: string): Promise<{ accessToken: string; refreshToken: string } | null> {
     try {
-      const response = await fetch(buildUrl('/api/auth/refresh'), {
+      const response = await fetch(buildUrl(API_ENDPOINTS.AUTH.REFRESH), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -195,7 +195,54 @@ class AuthService {
 
   // Public methods
   public async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    const response = await fetch(buildUrl('/api/auth/login'), {
+    console.log('🔐 AuthService.login called with email:', credentials.email);
+    console.log('🔐 MOCK_MODE:', API_CONFIG.MOCK_MODE);
+    console.log('🔐 BASE_URL:', API_CONFIG.BASE_URL);
+    
+    // Check if we're in mock mode
+    if (API_CONFIG.MOCK_MODE) {
+      console.log('🔐 Using mock authentication for development');
+      
+      // Simulate network delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Mock validation - accept any email/password for demo
+      if (!credentials.email || !credentials.password) {
+        throw new Error('Please enter both email and password');
+      }
+      
+      // Mock successful login for demo purposes
+      const mockUser: User = {
+        id: 1,
+        name: 'Demo User',
+        username: 'demo_user',
+        email: credentials.email,
+        mobile: '+1234567890',
+        role: 'user',
+        is_verified: true,
+      };
+      
+      const mockResponse: AuthResponse = {
+        message: 'Login successful (Mock Mode)',
+        accessToken: 'mock_access_token_' + Date.now(),
+        refreshToken: 'mock_refresh_token_' + Date.now(),
+        expiresIn: 3600,
+        user: mockUser,
+      };
+      
+      // Store tokens securely
+      await this.storeTokens(mockResponse.accessToken, mockResponse.refreshToken);
+      
+      // Store user data
+      await AsyncStorage.setItem('user', JSON.stringify(mockResponse.user));
+      
+      console.log('🔐 Mock login successful for user:', mockUser.email);
+      return mockResponse;
+    }
+    
+    // Real API call (when mock mode is disabled)
+        console.log('🔐 Making real API call to:', buildUrl(API_ENDPOINTS.AUTH.LOGIN));
+        const response = await fetch(buildUrl(API_ENDPOINTS.AUTH.LOGIN), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -247,7 +294,7 @@ class AuthService {
   }
 
   public async register(userData: RegisterData): Promise<AuthResponse> {
-    const response = await fetch(buildUrl('/api/auth/register'), {
+    const response = await fetch(buildUrl(API_ENDPOINTS.AUTH.REGISTER), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -287,7 +334,47 @@ class AuthService {
   }
 
   public async googleLogin(googleData: GoogleAuthData): Promise<AuthResponse> {
-    const response = await fetch(buildUrl('/api/auth/social-login'), {
+    console.log('🔐 Google login attempt with email:', googleData.email);
+    
+    // Check if we're in mock mode
+    if (API_CONFIG.MOCK_MODE) {
+      console.log('🔐 Using mock Google authentication for development');
+      
+      // Simulate network delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Mock successful Google login
+      const mockUser: User = {
+        id: 2,
+        name: googleData.name,
+        username: googleData.email.split('@')[0],
+        email: googleData.email,
+        mobile: googleData.mobile || '+1234567890',
+        role: 'user',
+        is_verified: true,
+      };
+      
+      const mockResponse: AuthResponse = {
+        message: 'Google login successful (Mock Mode)',
+        accessToken: 'mock_google_access_token_' + Date.now(),
+        refreshToken: 'mock_google_refresh_token_' + Date.now(),
+        expiresIn: 3600,
+        user: mockUser,
+      };
+      
+      // Store tokens securely
+      await this.storeTokens(mockResponse.accessToken, mockResponse.refreshToken);
+      
+      // Store user data
+      await AsyncStorage.setItem('user', JSON.stringify(mockResponse.user));
+      
+      console.log('🔐 Mock Google login successful for user:', mockUser.email);
+      return mockResponse;
+    }
+    
+    // Real API call (when mock mode is disabled)
+        console.log('🔐 Making real Google API call to:', buildUrl(API_ENDPOINTS.AUTH.SOCIAL_LOGIN));
+        const response = await fetch(buildUrl(API_ENDPOINTS.AUTH.SOCIAL_LOGIN), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -331,7 +418,7 @@ class AuthService {
       const { refreshToken } = await this.getStoredTokens();
       
       if (refreshToken) {
-        await fetch(buildUrl('/api/auth/logout'), {
+        await fetch(buildUrl(API_ENDPOINTS.AUTH.LOGOUT), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -375,7 +462,7 @@ class AuthService {
 
   // Get user profile
   public async getUserProfile(): Promise<User> {
-    const response = await this.authenticatedRequest('/api/auth/profile');
+    const response = await this.authenticatedRequest(API_ENDPOINTS.AUTH.PROFILE);
     
     if (!response.ok) {
       throw new Error('Failed to get user profile');
