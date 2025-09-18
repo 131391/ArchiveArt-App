@@ -4,8 +4,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
+    Animated,
     Dimensions,
     KeyboardAvoidingView,
     Platform,
@@ -25,6 +26,31 @@ export default function LoginScreen() {
   const [passwordError, setPasswordError] = useState('');
   const [alert, setAlert] = useState({ visible: false, message: '', type: 'error' as 'success' | 'error' | 'warning' | 'info' });
   const { login, googleLogin } = useAuth();
+  
+  // Animated spinner for loading state
+  const spinValue = useRef(new Animated.Value(0)).current;
+
+  // Spinner animation effect
+  useEffect(() => {
+    if (isLoading) {
+      const spinAnimation = Animated.loop(
+        Animated.timing(spinValue, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        })
+      );
+      spinAnimation.start();
+      return () => spinAnimation.stop();
+    } else {
+      spinValue.setValue(0);
+    }
+  }, [isLoading]);
+
+  const spin = spinValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
 
   const showAlert = (message: string, type: 'success' | 'error' | 'warning' | 'info' = 'error') => {
     setAlert({ visible: true, message, type });
@@ -222,7 +248,9 @@ export default function LoginScreen() {
                 >
                   {isLoading ? (
                     <View style={styles.loadingContainer}>
-                      <Ionicons name="refresh" size={20} color="#FFFFFF" />
+                      <Animated.View style={{ transform: [{ rotate: spin }] }}>
+                        <Ionicons name="refresh" size={20} color="#FFFFFF" />
+                      </Animated.View>
                       <Text style={styles.loginButtonText}>Signing in...</Text>
                     </View>
                   ) : (
@@ -242,12 +270,20 @@ export default function LoginScreen() {
             {/* Social Login */}
             <View style={styles.socialContainer}>
               <TouchableOpacity 
-                style={styles.socialButton}
+                style={[styles.socialButton, isLoading && styles.socialButtonDisabled]}
                 onPress={handleGoogleLogin}
                 disabled={isLoading}
               >
-                <Ionicons name="logo-google" size={24} color="#DB4437" />
-                <Text style={styles.socialButtonText}>Google</Text>
+                {isLoading ? (
+                  <Animated.View style={{ transform: [{ rotate: spin }] }}>
+                    <Ionicons name="refresh" size={20} color="#DB4437" />
+                  </Animated.View>
+                ) : (
+                  <Ionicons name="logo-google" size={24} color="#DB4437" />
+                )}
+                <Text style={[styles.socialButtonText, isLoading && styles.socialButtonTextDisabled]}>
+                  {isLoading ? 'Signing in...' : 'Google'}
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity 
@@ -429,6 +465,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#495057',
     letterSpacing: 0.3,
+  },
+  socialButtonDisabled: {
+    opacity: 0.6,
+    backgroundColor: '#F8F9FA',
+  },
+  socialButtonTextDisabled: {
+    color: '#6C757D',
   },
   signUpContainer: {
     flexDirection: 'row',
