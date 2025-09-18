@@ -134,7 +134,7 @@ export default function ScannerScreen() {
         const resetTimer = setTimeout(() => {
           setHasNavigatedAway(false); // Reset the flag
           console.log('📷 Camera state reset completed');
-        }, 500);
+        }, 200);
 
         return () => {
           clearTimeout(resetTimer);
@@ -569,25 +569,18 @@ export default function ScannerScreen() {
       </View>
       {permission?.granted ? (
         <>
-          {/* Loading indicator during camera reinitialization */}
-          {isReinitializing && (
-            <View style={styles.cameraLoadingContainer}>
-              <ActivityIndicator size="large" color="#3B82F6" />
-              <Text style={styles.cameraLoadingText}>Initializing Camera...</Text>
-            </View>
-          )}
           <CameraView
             key={cameraKey}
             style={StyleSheet.absoluteFill}
             onCameraReady={() => {
               console.log('📷 Camera is ready');
-              // Reduced delay for better user experience
+              // Minimal delay for better user experience
               setTimeout(() => {
                 setIsReady(true);
                 setCameraInitialized(true);
                 setIsReinitializing(false);
                 console.log('📷 Camera ready state set to true and initialized');
-              }, 800);
+              }, 300);
             }}
             onMountError={(error) => {
               console.log('❌ Camera mount error:', error);
@@ -818,22 +811,4 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   processingText: { color: '#fff', marginLeft: 8, fontWeight: '600' },
-  cameraLoadingContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1000,
-  },
-  cameraLoadingText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-    marginTop: 16,
-    textAlign: 'center',
-  },
 });
