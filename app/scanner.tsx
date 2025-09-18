@@ -543,6 +543,7 @@ export default function ScannerScreen() {
       router.push({ pathname: '/media-player', params: { url: mediaUrl, type: mediaType } });
     } catch (e) {
       console.log('❌ API call error with selected image:', e);
+      setHasNavigatedAway(true);
       router.push('/no-match');
     } finally {
       setIsScanning(false);
