@@ -100,11 +100,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = async () => {
     try {
+      console.log('🔐 AuthContext.logout called');
       setIsLoading(true);
       await AuthService.logout();
       setUser(null);
+      console.log('🔐 AuthContext.logout completed successfully');
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error('🔐 AuthContext.logout error:', error);
       // Still clear local state even if API call fails
       setUser(null);
     } finally {

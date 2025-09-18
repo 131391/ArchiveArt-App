@@ -414,23 +414,52 @@ class AuthService {
   }
 
   public async logout(): Promise<void> {
+    console.log('🔐 AuthService.logout called');
+    console.log('🔐 MOCK_MODE:', API_CONFIG.MOCK_MODE);
+    console.log('🔐 BASE_URL:', API_CONFIG.BASE_URL);
+    
     try {
       const { refreshToken } = await this.getStoredTokens();
+      console.log('🔐 Refresh token exists:', !!refreshToken);
       
       if (refreshToken) {
-        await fetch(buildUrl(API_ENDPOINTS.AUTH.LOGOUT), {
+        const logoutUrl = buildUrl(API_ENDPOINTS.AUTH.LOGOUT);
+        console.log('🔐 Making logout API call to:', logoutUrl);
+        
+        const response = await fetch(logoutUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ refreshToken }),
         });
+        
+        console.log('🔐 Logout API response status:', response.status);
+        
+        if (!response.ok) {
+          let errorMessage = 'Logout API call failed';
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.message || errorData.error || `HTTP ${response.status}: ${response.statusText}`;
+            console.error('🔐 Logout API error response:', errorData);
+          } catch (parseError) {
+            console.error('🔐 Failed to parse logout error response:', parseError);
+            errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+          }
+          console.error('🔐 Logout API failed:', errorMessage);
+        } else {
+          console.log('🔐 Logout API call successful');
+        }
+      } else {
+        console.log('🔐 No refresh token found, skipping API call');
       }
     } catch (error) {
-      console.error('Logout API call failed:', error);
+      console.error('🔐 Logout API call failed with error:', error);
     } finally {
       // Always clear local storage
+      console.log('🔐 Clearing stored tokens and user data');
       await this.clearStoredTokens();
+      console.log('🔐 Logout completed');
     }
   }
 
