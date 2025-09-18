@@ -111,10 +111,18 @@ class AuthService {
       (headers as any)['X-Refresh-Token'] = refreshToken;
     }
 
+    console.log('🔐 Making authenticated request to:', url);
+    console.log('🔐 Request headers:', JSON.stringify(headers, null, 2));
+    console.log('🔐 Request method:', options.method || 'GET');
+    console.log('🔐 Request body type:', options.body ? (options.body instanceof FormData ? 'FormData' : typeof options.body) : 'none');
+
     const response = await fetch(url, {
       ...options,
       headers,
     });
+    
+    console.log('🔐 Response received - Status:', response.status, response.statusText);
+    console.log('🔐 Response URL:', response.url);
 
     // Check if we got a new access token in response headers
     const newAccessToken = response.headers.get('X-New-Access-Token');

@@ -271,6 +271,20 @@ export default function ScannerScreen() {
       console.log('📤 Request payload:', { threshold: '5', image: 'file object' });
       console.log('🔐 MOCK_MODE:', API_CONFIG.MOCK_MODE);
       console.log('🔐 BASE_URL:', API_CONFIG.BASE_URL);
+      
+      // Log FormData contents
+      console.log('📤 FormData contents:');
+      for (const [key, value] of form.entries()) {
+        if (value instanceof File || (typeof value === 'object' && value.uri)) {
+          console.log(`  ${key}: [File object]`, {
+            name: value.name || 'unknown',
+            type: value.type || 'unknown',
+            size: value.size || 'unknown'
+          });
+        } else {
+          console.log(`  ${key}:`, value);
+        }
+      }
 
       const res = await AuthService.authenticatedRequest(API_ENDPOINTS.MEDIA.MATCH, {
         method: 'POST',
@@ -282,20 +296,38 @@ export default function ScannerScreen() {
       });
 
       console.log('📡 API Response Status:', res.status, res.statusText);
+      console.log('📡 API Response OK:', res.ok);
+      console.log('📡 API Response Type:', res.type);
+      console.log('📡 API Response URL:', res.url);
+      
       try {
         const headersObj: Record<string, string> = {};
         res.headers.forEach((value, key) => {
           headersObj[key] = value;
         });
-        console.log('📡 API Response Headers:', headersObj);
-      } catch {}
+        console.log('📡 API Response Headers:', JSON.stringify(headersObj, null, 2));
+      } catch (headerError) {
+        console.log('❌ Error reading response headers:', headerError);
+      }
+
+      // Try to get response text first to see raw response
+      let responseText = '';
+      try {
+        responseText = await res.clone().text();
+        console.log('📥 API Raw Response Text:', responseText);
+      } catch (textError) {
+        console.log('❌ Error reading response text:', textError);
+      }
 
       const json = await res.json().catch((parseError) => {
         console.log('❌ Failed to parse JSON response:', parseError);
+        console.log('❌ Raw response that failed to parse:', responseText);
         return null;
       });
 
-      console.log('📥 API Response Body:', JSON.stringify(json, null, 2));
+      console.log('📥 API Response JSON:', JSON.stringify(json, null, 2));
+      console.log('📥 API Response Type Check:', typeof json);
+      console.log('📥 API Response Keys:', json ? Object.keys(json) : 'null');
 
       if (!res.ok || !json?.success) {
         console.log('❌ API request failed or returned error');
@@ -394,6 +426,20 @@ export default function ScannerScreen() {
       console.log('🌐 Hitting API (selected image):', selectedImageApiUrl);
       console.log('🔐 MOCK_MODE:', API_CONFIG.MOCK_MODE);
       console.log('🔐 BASE_URL:', API_CONFIG.BASE_URL);
+      
+      // Log FormData contents for selected image
+      console.log('📤 FormData contents (selected image):');
+      for (const [key, value] of form.entries()) {
+        if (value instanceof File || (typeof value === 'object' && value.uri)) {
+          console.log(`  ${key}: [File object]`, {
+            name: value.name || 'unknown',
+            type: value.type || 'unknown',
+            size: value.size || 'unknown'
+          });
+        } else {
+          console.log(`  ${key}:`, value);
+        }
+      }
 
       const apiRes = await AuthService.authenticatedRequest(API_ENDPOINTS.MEDIA.MATCH, {
         method: 'POST',
@@ -404,21 +450,39 @@ export default function ScannerScreen() {
         body: form as any,
       });
 
-      console.log('📡 API Response Status:', apiRes.status, apiRes.statusText);
+      console.log('📡 API Response Status (selected image):', apiRes.status, apiRes.statusText);
+      console.log('📡 API Response OK (selected image):', apiRes.ok);
+      console.log('📡 API Response Type (selected image):', apiRes.type);
+      console.log('📡 API Response URL (selected image):', apiRes.url);
+      
       try {
         const headersObj2: Record<string, string> = {};
         apiRes.headers.forEach((value, key) => {
           headersObj2[key] = value;
         });
-        console.log('📡 API Response Headers:', headersObj2);
-      } catch {}
+        console.log('📡 API Response Headers (selected image):', JSON.stringify(headersObj2, null, 2));
+      } catch (headerError) {
+        console.log('❌ Error reading response headers (selected image):', headerError);
+      }
+
+      // Try to get response text first to see raw response
+      let responseText2 = '';
+      try {
+        responseText2 = await apiRes.clone().text();
+        console.log('📥 API Raw Response Text (selected image):', responseText2);
+      } catch (textError) {
+        console.log('❌ Error reading response text (selected image):', textError);
+      }
 
       const json = await apiRes.json().catch((parseError) => {
-        console.log('❌ Failed to parse JSON response:', parseError);
+        console.log('❌ Failed to parse JSON response (selected image):', parseError);
+        console.log('❌ Raw response that failed to parse (selected image):', responseText2);
         return null;
       });
 
-      console.log('📥 API Response Body:', JSON.stringify(json, null, 2));
+      console.log('📥 API Response JSON (selected image):', JSON.stringify(json, null, 2));
+      console.log('📥 API Response Type Check (selected image):', typeof json);
+      console.log('📥 API Response Keys (selected image):', json ? Object.keys(json) : 'null');
 
       if (!apiRes.ok || !json?.success) {
         console.log('❌ API request failed or returned error');
