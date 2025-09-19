@@ -6,8 +6,8 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (credentials: LoginCredentials) => Promise<void>;
-  register: (userData: RegisterData) => Promise<void>;
-  googleLogin: (googleData: GoogleAuthData) => Promise<void>;
+  register: (userData: RegisterData) => Promise<Error | null>;
+  googleLogin: (googleData: GoogleAuthData) => Promise<Error | null>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }

@@ -233,21 +233,29 @@ export default function RegisterScreen() {
       setIsLoading(true);
       console.log('🔐 Starting registration process');
       
-      await register({
+      const error = await register({
         name: name.trim(),
         username: username.trim(),
         email: email.trim(),
         password,
         mobile: `+91${mobile.trim()}`,
-      });
+      }) as Error | null;
       
-      showAlert('success', 'Registration Successful', 'Your account has been created successfully!');
-      setTimeout(() => {
-        router.replace('/welcome');
-      }, 1500);
+      if (error) {
+        // Registration failed with error
+        console.error('🔐 Registration error:', error);
+        showAlert('error', 'Registration Failed', error.message);
+      } else {
+        // Registration successful
+        showAlert('success', 'Registration Successful', 'Your account has been created successfully!');
+        // Only navigate to welcome page on successful registration
+        setTimeout(() => {
+          router.replace('/welcome');
+        }, 1500);
+      }
     } catch (error) {
-      console.error('🔐 Registration error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'An error occurred during registration';
+      console.error('🔐 Unexpected registration error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred during registration';
       showAlert('error', 'Registration Failed', errorMessage);
     } finally {
       setIsLoading(false);
@@ -268,14 +276,22 @@ export default function RegisterScreen() {
         profilePicture: 'https://example.com/avatar.jpg',
       };
       
-      await googleLogin(mockGoogleData);
-      showAlert('success', 'Login Successful', 'Welcome back!');
-      setTimeout(() => {
-        router.replace('/welcome');
-      }, 1500);
+      const error = await googleLogin(mockGoogleData) as Error | null;
+      
+      if (error) {
+        // Google login failed with error
+        console.error('🔐 Google login error:', error);
+        showAlert('error', 'Google Login Failed', error.message);
+      } else {
+        // Google login successful
+        showAlert('success', 'Login Successful', 'Welcome back!');
+        setTimeout(() => {
+          router.replace('/welcome');
+        }, 1500);
+      }
     } catch (error) {
-      console.error('🔐 Google login error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'An error occurred during Google login';
+      console.error('🔐 Unexpected Google login error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred during Google login';
       showAlert('error', 'Google Login Failed', errorMessage);
     } finally {
       setIsLoading(false);
