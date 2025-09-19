@@ -1,6 +1,6 @@
 import { ModernAlert } from '@/components/ui/ModernAlert';
 import { ModernTextInput } from '@/components/ui/ModernTextInput';
-import { validateEmail, validateIndianMobile, validatePassword, validatePasswordDetailed, checkUsernameAvailability, UsernameCheckResponse } from '@/constants/Api';
+import { checkUsernameAvailability, UsernameCheckResponse, validateEmail, validateIndianMobile, validatePassword, validatePasswordDetailed } from '@/constants/Api';
 import { useAuth } from '@/contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -67,7 +67,7 @@ export default function RegisterScreen() {
   const spinValue = useRef(new Animated.Value(0)).current;
   
   const { register, googleLogin } = useAuth();
-  
+
   // Animate spinner
   useEffect(() => {
     if (isLoading) {
@@ -114,7 +114,7 @@ export default function RegisterScreen() {
       setUsernameError('Username must be at least 3 characters long');
       return;
     }
-    
+
     if (!/^[a-zA-Z0-9_]+$/.test(text)) {
       setUsernameError('Username can only contain letters, numbers, and underscores');
       return;
@@ -128,6 +128,7 @@ export default function RegisterScreen() {
       setIsCheckingUsername(true);
       try {
         const validation = await checkUsernameAvailability(text.trim());
+        console.log('🔐 Username validation result:', validation);
         setUsernameValidation(validation);
         
         if (!validation.available) {
@@ -293,7 +294,7 @@ export default function RegisterScreen() {
         showAlert('success', 'Registration Successful', 'Your account has been created successfully!');
         // Only navigate to welcome page on successful registration
         setTimeout(() => {
-          router.replace('/welcome');
+      router.replace('/welcome');
         }, 1500);
       }
     } catch (error) {
@@ -329,7 +330,7 @@ export default function RegisterScreen() {
         // Google login successful
         showAlert('success', 'Login Successful', 'Welcome back!');
         setTimeout(() => {
-          router.replace('/welcome');
+      router.replace('/welcome');
         }, 1500);
       }
     } catch (error) {
@@ -386,7 +387,7 @@ export default function RegisterScreen() {
             </View>
 
             {/* Form */}
-            <View style={styles.form}>
+      <View style={styles.form}>
               <ModernTextInput
                 icon="person"
                 placeholder="Full Name"
@@ -401,12 +402,14 @@ export default function RegisterScreen() {
                 placeholder="Username"
                 value={username}
                 onChangeText={handleUsernameChange}
-                error={usernameError}
+                error={username && username.trim().length >= 3 ? '' : usernameError}
                 autoCapitalize="none"
               />
               
               {/* Username Validation and Suggestions */}
-              {username && username.trim().length >= 3 && (
+              {username && username.trim().length >= 3 && (() => {
+                console.log('🔐 Rendering username validation:', usernameValidation);
+                return (
                 <View style={styles.usernameValidationContainer}>
                   {isCheckingUsername ? (
                     <View style={styles.usernameCheckingContainer}>
@@ -430,7 +433,7 @@ export default function RegisterScreen() {
                       </View>
                       
                       {/* Username Suggestions */}
-                      {!usernameValidation.available && usernameValidation.suggestions.length > 0 && (
+                      {!usernameValidation.available && usernameValidation.suggestions && usernameValidation.suggestions.length > 0 && (
                         <View style={styles.usernameSuggestionsContainer}>
                           <Text style={styles.usernameSuggestionsTitle}>Suggested usernames:</Text>
                           <View style={styles.usernameSuggestionsList}>
@@ -447,13 +450,14 @@ export default function RegisterScreen() {
                                 <Ionicons name="arrow-forward" size={14} color="#667eea" />
                               </TouchableOpacity>
                             ))}
-                          </View>
-                        </View>
+        </View>
+      </View>
                       )}
                     </View>
                   ) : null}
                 </View>
-              )}
+                );
+              })()}
               
               <ModernTextInput
                 icon="mail"
@@ -566,15 +570,15 @@ export default function RegisterScreen() {
                       Not a common password ({passwordRequirements.notCommon ? "✅" : "❌"} "{password}" is blocked)
                     </Text>
                   </View>
-                </View>
+      </View>
               )}
 
               {/* Register Button */}
-              <TouchableOpacity 
+        <TouchableOpacity 
                 style={[styles.registerButton, isLoading && styles.registerButtonDisabled]}
                 onPress={handleRegister}
-                disabled={isLoading}
-              >
+          disabled={isLoading}
+        >
                 <LinearGradient
                   colors={isLoading ? ['#a8a8a8', '#888888'] : ['#667eea', '#764ba2']}
                   style={styles.registerButtonGradient}
@@ -585,13 +589,13 @@ export default function RegisterScreen() {
                         <Ionicons name="refresh" size={20} color="#FFFFFF" />
                       </Animated.View>
                       <Text style={styles.registerButtonText}>Creating Account...</Text>
-                    </View>
+          </View>
                   ) : (
                     <Text style={styles.registerButtonText}>Create Account</Text>
                   )}
                 </LinearGradient>
-              </TouchableOpacity>
-
+        </TouchableOpacity>
+        
               {/* Login Link */}
               <View style={styles.loginLinkContainer}>
                 <Text style={styles.loginLinkText}>Already have an account? </Text>
@@ -610,27 +614,27 @@ export default function RegisterScreen() {
 
             {/* Social Login */}
             <View style={styles.socialContainer}>
-              <TouchableOpacity 
+        <TouchableOpacity 
                 style={[styles.socialButton, styles.googleButton]}
                 onPress={handleGoogleLogin}
-                disabled={isLoading}
-              >
+          disabled={isLoading}
+        >
                 {isLoading ? (
                   <View style={styles.socialLoadingContainer}>
                     <Animated.View style={{ transform: [{ rotate: spin }] }}>
                       <Ionicons name="refresh" size={20} color="#DB4437" />
                     </Animated.View>
                     <Text style={styles.socialButtonText}>Connecting...</Text>
-                  </View>
+          </View>
                 ) : (
                   <>
                     <Ionicons name="logo-google" size={24} color="#DB4437" />
                     <Text style={styles.socialButtonText}>Continue with Google</Text>
                   </>
                 )}
-              </TouchableOpacity>
-            </View>
-          </View>
+        </TouchableOpacity>
+      </View>
+    </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </LinearGradient>
