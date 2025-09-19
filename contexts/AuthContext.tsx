@@ -82,6 +82,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return null; // Success, no error
     } catch (error) {
       console.log('🔐 AuthContext.register caught error:', error);
+      console.log('🔐 AuthContext.register error type:', typeof error);
+      console.log('🔐 AuthContext.register error message:', error instanceof Error ? error.message : 'Not an Error object');
       return error instanceof Error ? error : new Error('An unexpected error occurred during registration.');
     } finally {
       setIsLoading(false);

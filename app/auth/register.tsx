@@ -241,9 +241,14 @@ export default function RegisterScreen() {
         mobile: `+91${mobile.trim()}`,
       }) as Error | null;
       
+      console.log('🔐 Registration page received error:', error);
+      console.log('🔐 Registration page error is truthy:', !!error);
+      
       if (error) {
         // Registration failed with error
         console.error('🔐 Registration error:', error);
+        console.error('🔐 Registration error type:', typeof error);
+        console.error('🔐 Registration error message:', error.message);
         showAlert('error', 'Registration Failed', error.message);
       } else {
         // Registration successful
