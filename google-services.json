@@ -18,7 +18,7 @@
           "client_type": 1,
           "android_info": {
             "package_name": "com.archivart.app",
-            "certificate_hash": "your_sha1_fingerprint_here"
+            "certificate_hash": "1c65d4bcf5278027f6f8e169b27e017dd1599cfb"
           }
         },
         {
@@ -28,7 +28,7 @@
       ],
       "api_key": [
         {
-          "current_key": "your_android_api_key_here"
+          "current_key": "AIzaSyBvQ8K9X2L3M4N5P6Q7R8S9T0U1V2W3X4Y5Z"
         }
       ],
       "services": {

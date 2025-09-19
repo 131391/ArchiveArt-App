@@ -16,16 +16,16 @@ try {
 
 export const GOOGLE_CONFIG = {
   // Web Client ID (from Google Cloud Console)
-  webClientId: '245858141100-e7tbpirmi8a3dot5sib3fc7nmlg16vam.apps.googleusercontent.com',
+  webClientId: process.env.GOOGLE_WEB_CLIENT_ID || '245858141100-e7tbpirmi8a3dot5sib3fc7nmlg16vam.apps.googleusercontent.com',
   
   // iOS Client ID (from Google Cloud Console)
-  iosClientId: '245858141100-64maf1nnom0omlleevt52cudkepm5vgi.apps.googleusercontent.com',
+  iosClientId: process.env.GOOGLE_IOS_CLIENT_ID || '245858141100-64maf1nnom0omlleevt52cudkepm5vgi.apps.googleusercontent.com',
   
   // Android Client ID (from Google Cloud Console)
-  androidClientId: '245858141100-m7osihh7l439n0967plqq58org8pcl1s.apps.googleusercontent.com',
+  androidClientId: process.env.GOOGLE_ANDROID_CLIENT_ID || '245858141100-m7osihh7l439n0967plqq58org8pcl1s.apps.googleusercontent.com',
   
   // iOS URL Scheme (for deep linking)
-  iosUrlScheme: 'com.googleusercontent.apps.245858141100-64maf1nnom0omlleevt52cudkepm5vgi',
+  iosUrlScheme: process.env.GOOGLE_IOS_URL_SCHEME || 'com.googleusercontent.apps.245858141100-64maf1nnom0omlleevt52cudkepm5vgi',
 };
 
 // Check if Google Sign-In native module is available
