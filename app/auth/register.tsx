@@ -314,20 +314,41 @@ export default function RegisterScreen() {
       const error = await googleLogin() as Error | null;
       
       if (error) {
-        // Google login failed with error
         console.error('🔐 Google login error:', error);
-        showAlert('error', 'Google Login Failed', error.message);
+        
+        // Handle specific error cases
+        if (error.message.includes('cancelled')) {
+          // User cancelled - don't show error message
+          console.log('🔐 User cancelled Google login');
+          return;
+        } else if (error.message.includes('Network error')) {
+          showAlert('error', 'Connection Error', 'Please check your internet connection and try again.');
+        } else if (error.message.includes('Google Play Services')) {
+          showAlert('error', 'Google Services Error', 'Google Play Services is not available. Please update or install Google Play Services.');
+        } else if (error.message.includes('Too many authentication attempts')) {
+          showAlert('error', 'Too Many Attempts', error.message);
+        } else if (error.message.includes('Invalid Google token')) {
+          showAlert('error', 'Authentication Error', 'Invalid Google authentication. Please try again.');
+        } else if (error.message.includes('User already exists')) {
+          showAlert('error', 'Account Exists', 'An account with this email already exists. Please use regular login instead.');
+        } else if (error.message.includes('Email not verified')) {
+          showAlert('error', 'Email Verification Required', 'Please verify your Google email address and try again.');
+        } else if (error.message.includes('Account disabled')) {
+          showAlert('error', 'Account Disabled', 'Your account has been disabled. Please contact support.');
+        } else {
+          showAlert('error', 'Google Authentication Failed', error.message);
+        }
       } else {
-        // Google login successful
-        showAlert('success', 'Login Successful', 'Welcome back!');
+        // Success case - could be login or registration
+        showAlert('success', 'Welcome!', 'You have been successfully authenticated with Google.');
         setTimeout(() => {
-      router.replace('/welcome');
+          router.replace('/welcome');
         }, 1500);
       }
     } catch (error) {
       console.error('🔐 Unexpected Google login error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred during Google login';
-      showAlert('error', 'Google Login Failed', errorMessage);
+      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred during Google authentication';
+      showAlert('error', 'Google Authentication Failed', errorMessage);
     } finally {
       setIsLoading(false);
     }

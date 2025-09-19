@@ -98,11 +98,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const googleLogin = async (googleData?: GoogleAuthData): Promise<Error | null> => {
     try {
       setIsLoading(true);
+      console.log('🔐 AuthContext.googleLogin called');
+      
       const authResponse = await AuthService.googleLogin(googleData);
+      console.log('🔐 AuthContext.googleLogin successful, setting user:', authResponse.user);
+      
       setUser(authResponse.user);
       return null; // Success, no error
     } catch (error) {
-      return error instanceof Error ? error : new Error('An unexpected error occurred during Google login.');
+      console.log('🔐 AuthContext.googleLogin caught error:', error);
+      console.log('🔐 AuthContext.googleLogin error type:', typeof error);
+      console.log('🔐 AuthContext.googleLogin error message:', error instanceof Error ? error.message : 'Not an Error object');
+      
+      return error instanceof Error ? error : new Error('An unexpected error occurred during Google authentication.');
     } finally {
       setIsLoading(false);
     }

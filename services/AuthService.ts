@@ -1,5 +1,5 @@
 import { API_CONFIG, API_ENDPOINTS, buildUrl } from '@/constants/Api';
-import { signInWithGoogle, signOutFromGoogle } from '@/config/google-signin';
+import { signInWithGoogle, signOutFromGoogle, completeGoogleAuthFlow } from '@/config/google-signin';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface User {
@@ -398,13 +398,27 @@ class AuthService {
   }
 
   public async googleLogin(googleData?: GoogleAuthData): Promise<AuthResponse> {
-    console.log('🔐 Google login attempt');
+    console.log('🔐 Starting Google authentication flow');
     
     try {
-      // Use real Google Sign-In
-      const googleResult = await signInWithGoogle();
+      // Step 1: Complete Google Sign-In flow
+      const authFlowResult = await completeGoogleAuthFlow();
       
-      console.log('🔐 Google Sign-In successful, sending to backend:', {
+      if (!authFlowResult.success) {
+        // Handle Google Sign-In errors
+        if (authFlowResult.error === 'USER_CANCELLED') {
+          throw new Error('Sign in was cancelled by user');
+        } else if (authFlowResult.error === 'NETWORK_ERROR') {
+          throw new Error('Network error. Please check your internet connection');
+        } else if (authFlowResult.error === 'PLAY_SERVICES_ERROR') {
+          throw new Error('Google Play Services not available');
+        } else {
+          throw new Error(authFlowResult.message || 'Google Sign-In failed');
+        }
+      }
+      
+      const googleResult = authFlowResult.googleData!;
+      console.log('🔐 Google Sign-In successful, processing with backend:', {
         id: googleResult.user.id,
         email: googleResult.user.email,
         name: googleResult.user.name,
@@ -412,7 +426,7 @@ class AuthService {
       
       // Check if we're in mock mode
       if (API_CONFIG.MOCK_MODE) {
-        console.log('🔐 Using mock Google login with real Google data');
+        console.log('🔐 Using mock Google authentication with real Google data');
         // Simulate API delay
         await new Promise(resolve => setTimeout(resolve, 1000));
         
@@ -427,7 +441,7 @@ class AuthService {
         };
         
         const mockResponse: AuthResponse = {
-          message: 'Google login successful (Mock Mode)',
+          message: 'Google authentication successful (Mock Mode)',
           accessToken: 'mock_google_access_token_' + Date.now(),
           refreshToken: 'mock_google_refresh_token_' + Date.now(),
           expiresIn: 3600,
@@ -435,11 +449,11 @@ class AuthService {
         };
         
         await this.storeTokens(mockResponse.accessToken, mockResponse.refreshToken);
-        console.log('🔐 Mock Google login successful');
+        console.log('🔐 Mock Google authentication successful');
         return mockResponse;
       }
       
-      // Send Google data to backend for verification and user creation/login
+      // Step 2: Send Google data to backend for user verification/creation
       const backendData = {
         provider: 'google',
         providerId: googleResult.user.id,
@@ -447,9 +461,12 @@ class AuthService {
         email: googleResult.user.email,
         profilePicture: googleResult.user.photo,
         idToken: googleResult.idToken,
+        // Additional data for user creation if needed
+        givenName: googleResult.user.givenName,
+        familyName: googleResult.user.familyName,
       };
       
-      console.log('🔐 Making real Google API call to:', buildUrl(API_ENDPOINTS.AUTH.SOCIAL_LOGIN));
+      console.log('🔐 Making Google authentication API call to:', buildUrl(API_ENDPOINTS.AUTH.SOCIAL_LOGIN));
       const response = await fetch(buildUrl(API_ENDPOINTS.AUTH.SOCIAL_LOGIN), {
         method: 'POST',
         headers: {
@@ -458,38 +475,75 @@ class AuthService {
         body: JSON.stringify(backendData),
       });
 
+      console.log('🔐 Google auth API response status:', response.status);
+      console.log('🔐 Google auth API response ok:', response.ok);
+
       if (!response.ok) {
-        let errorMessage = 'Google login failed';
+        let errorMessage = 'Google authentication failed';
+        let errorDetails = '';
+        
         try {
           const errorData = await response.json();
+          console.log('🔐 Google auth API error response:', errorData);
           
-          // Handle rate limiting specifically
+          // Handle specific error cases
           if (errorData.error && errorData.error.includes('Too many authentication attempts')) {
             const retryAfter = errorData.retryAfter || 900;
             const minutes = Math.ceil(retryAfter / 60);
-            errorMessage = `Too many login attempts. Please wait ${minutes} minutes before trying again.`;
+            errorMessage = `Too many authentication attempts. Please wait ${minutes} minutes before trying again.`;
+          } else if (errorData.error && errorData.error.includes('Invalid Google token')) {
+            errorMessage = 'Invalid Google authentication. Please try again.';
+          } else if (errorData.error && errorData.error.includes('User already exists')) {
+            errorMessage = 'An account with this email already exists. Please use regular login.';
+          } else if (errorData.error && errorData.error.includes('Email not verified')) {
+            errorMessage = 'Please verify your Google email address and try again.';
+          } else if (errorData.error && errorData.error.includes('Account disabled')) {
+            errorMessage = 'Your account has been disabled. Please contact support.';
           } else {
             errorMessage = errorData.message || errorData.error || `HTTP ${response.status}: ${response.statusText}`;
+            errorDetails = errorData.details || errorData.errors || '';
           }
         } catch (parseError) {
-          console.error('Failed to parse error response:', parseError);
+          console.error('🔐 Failed to parse Google auth error response:', parseError);
           errorMessage = `HTTP ${response.status}: ${response.statusText}`;
         }
-        throw new Error(errorMessage);
+        
+        const fullErrorMessage = errorDetails ? `${errorMessage}\n\nDetails: ${errorDetails}` : errorMessage;
+        throw new Error(fullErrorMessage);
       }
 
       const data: AuthResponse = await response.json();
+      console.log('🔐 Google auth API success response:', {
+        user: data.user,
+        hasAccessToken: !!data.accessToken,
+        hasRefreshToken: !!data.refreshToken,
+        message: data.message,
+      });
+      
+      // Check if the response contains an error even with 200 status
+      if (data && typeof data === 'object' && 'error' in data) {
+        console.log('🔐 Google auth API returned error in response body:', data.error);
+        throw new Error(data.error || 'Google authentication failed');
+      }
       
       // Store tokens securely
       await this.storeTokens(data.accessToken, data.refreshToken);
+      console.log('🔐 Google auth tokens stored successfully');
       
       // Store user data
       await AsyncStorage.setItem('user', JSON.stringify(data.user));
+      console.log('🔐 Google auth user data stored successfully');
       
       return data;
     } catch (error) {
-      console.error('🔐 Google login error:', error);
-      throw error;
+      console.error('🔐 Google authentication error:', error);
+      
+      // Re-throw the error with proper context
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error('An unexpected error occurred during Google authentication');
+      }
     }
   }
 
