@@ -1,11 +1,25 @@
-import { IconTextInput } from '@/components/ui/IconTextInput';
-import { LinkButton } from '@/components/ui/LinkButton';
-import { PrimaryButton } from '@/components/ui/PrimaryButton';
+import { ModernTextInput } from '@/components/ui/ModernTextInput';
+import { ModernAlert } from '@/components/ui/ModernAlert';
 import { useAuth } from '@/contexts/AuthContext';
+import { validateEmail, validatePassword, validateMobile } from '@/constants/Api';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { 
+  Animated, 
+  Dimensions, 
+  KeyboardAvoidingView, 
+  Platform, 
+  ScrollView, 
+  StatusBar, 
+  StyleSheet, 
+  Text, 
+  TouchableOpacity, 
+  View 
+} from 'react-native';
+
+const { width, height } = Dimensions.get('window');
 
 export default function RegisterScreen() {
   const [name, setName] = useState('');
@@ -14,31 +28,188 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState('');
   const [mobile, setMobile] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Validation states
+  const [nameError, setNameError] = useState('');
+  const [usernameError, setUsernameError] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [mobileError, setMobileError] = useState('');
+  
+  // Alert state
+  const [alert, setAlert] = useState<{
+    visible: boolean;
+    type: 'success' | 'error' | 'warning' | 'info';
+    title: string;
+    message: string;
+  }>({
+    visible: false,
+    type: 'error',
+    title: '',
+    message: '',
+  });
+  
+  // Animation values
+  const spinValue = useRef(new Animated.Value(0)).current;
+  
   const { register, googleLogin } = useAuth();
+  
+  // Animate spinner
+  useEffect(() => {
+    if (isLoading) {
+      Animated.loop(
+        Animated.timing(spinValue, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        })
+      ).start();
+    }
+  }, [isLoading, spinValue]);
+  
+  const spin = spinValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
+  // Alert functions
+  const showAlert = (type: 'success' | 'error' | 'warning' | 'info', title: string, message: string) => {
+    setAlert({ visible: true, type, title, message });
+  };
+
+  const hideAlert = () => {
+    setAlert(prev => ({ ...prev, visible: false }));
+  };
+
+  // Validation functions
+  const handleNameChange = (text: string) => {
+    setName(text);
+    if (text.trim().length < 2) {
+      setNameError('Name must be at least 2 characters long');
+    } else {
+      setNameError('');
+    }
+  };
+
+  const handleUsernameChange = (text: string) => {
+    setUsername(text);
+    if (text.trim().length < 3) {
+      setUsernameError('Username must be at least 3 characters long');
+    } else if (!/^[a-zA-Z0-9_]+$/.test(text)) {
+      setUsernameError('Username can only contain letters, numbers, and underscores');
+    } else {
+      setUsernameError('');
+    }
+  };
+
+  const handleEmailChange = (text: string) => {
+    setEmail(text);
+    if (text && !validateEmail(text)) {
+      setEmailError('Please enter a valid email address');
+    } else {
+      setEmailError('');
+    }
+  };
+
+  const handlePasswordChange = (text: string) => {
+    setPassword(text);
+    if (text && !validatePassword(text)) {
+      setPasswordError('Password must be at least 8 characters with uppercase, lowercase, number, and special character');
+    } else {
+      setPasswordError('');
+    }
+  };
+
+  const handleMobileChange = (text: string) => {
+    setMobile(text);
+    if (text && !validateMobile(text)) {
+      setMobileError('Please enter a valid mobile number (e.g., +1234567890)');
+    } else {
+      setMobileError('');
+    }
+  };
 
   const handleRegister = async () => {
-    if (!name || !username || !email || !password) {
-      Alert.alert('Error', 'Please fill in all required fields');
-      return;
+    console.log('🔐 Register button clicked');
+    
+    // Clear previous errors
+    setNameError('');
+    setUsernameError('');
+    setEmailError('');
+    setPasswordError('');
+    setMobileError('');
+
+    // Validate all fields
+    let hasErrors = false;
+
+    if (!name.trim()) {
+      setNameError('Name is required');
+      hasErrors = true;
+    } else if (name.trim().length < 2) {
+      setNameError('Name must be at least 2 characters long');
+      hasErrors = true;
     }
 
-    if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters long');
+    if (!username.trim()) {
+      setUsernameError('Username is required');
+      hasErrors = true;
+    } else if (username.trim().length < 3) {
+      setUsernameError('Username must be at least 3 characters long');
+      hasErrors = true;
+    } else if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+      setUsernameError('Username can only contain letters, numbers, and underscores');
+      hasErrors = true;
+    }
+
+    if (!email.trim()) {
+      setEmailError('Email is required');
+      hasErrors = true;
+    } else if (!validateEmail(email)) {
+      setEmailError('Please enter a valid email address');
+      hasErrors = true;
+    }
+
+    if (!password) {
+      setPasswordError('Password is required');
+      hasErrors = true;
+    } else if (!validatePassword(password)) {
+      setPasswordError('Password must be at least 8 characters with uppercase, lowercase, number, and special character');
+      hasErrors = true;
+    }
+
+    if (!mobile.trim()) {
+      setMobileError('Mobile number is required');
+      hasErrors = true;
+    } else if (!validateMobile(mobile)) {
+      setMobileError('Please enter a valid mobile number (e.g., +1234567890)');
+      hasErrors = true;
+    }
+
+    if (hasErrors) {
+      showAlert('error', 'Validation Error', 'Please fix the errors above');
       return;
     }
 
     try {
       setIsLoading(true);
+      console.log('🔐 Starting registration process');
+      
       await register({
-        name,
-        username,
-        email,
+        name: name.trim(),
+        username: username.trim(),
+        email: email.trim(),
         password,
-        mobile: mobile || undefined,
+        mobile: mobile.trim(),
       });
-      router.replace('/welcome');
+      
+      showAlert('success', 'Registration Successful', 'Your account has been created successfully!');
+      setTimeout(() => {
+        router.replace('/welcome');
+      }, 1500);
     } catch (error) {
-      Alert.alert('Registration Failed', error instanceof Error ? error.message : 'An error occurred');
+      console.error('🔐 Registration error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred during registration';
+      showAlert('error', 'Registration Failed', errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -47,6 +218,8 @@ export default function RegisterScreen() {
   const handleGoogleLogin = async () => {
     try {
       setIsLoading(true);
+      console.log('🔐 Google login button clicked');
+      
       // For now, we'll use mock data. In a real app, you'd integrate with Google Sign-In
       const mockGoogleData = {
         provider: 'google',
@@ -57,184 +230,333 @@ export default function RegisterScreen() {
       };
       
       await googleLogin(mockGoogleData);
-      router.replace('/welcome');
+      showAlert('success', 'Login Successful', 'Welcome back!');
+      setTimeout(() => {
+        router.replace('/welcome');
+      }, 1500);
     } catch (error) {
-      Alert.alert('Google Login Failed', error instanceof Error ? error.message : 'An error occurred');
+      console.error('🔐 Google login error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred during Google login';
+      showAlert('error', 'Google Login Failed', errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Create Account</Text>
-      <View style={styles.form}>
-        <IconTextInput icon="person" placeholder="Full Name" value={name} onChangeText={setName} />
-        <View style={{ height: 12 }} />
-        <IconTextInput icon="at" placeholder="Username" autoCapitalize="none" value={username} onChangeText={setUsername} />
-        <View style={{ height: 12 }} />
-        <IconTextInput icon="mail" placeholder="Email" keyboardType="email-address" autoCapitalize="none" value={email} onChangeText={setEmail} />
-        <View style={{ height: 12 }} />
-        <IconTextInput icon="call" placeholder="Mobile (Optional)" keyboardType="phone-pad" value={mobile} onChangeText={setMobile} />
-        <View style={{ height: 12 }} />
-        <IconTextInput icon="lock-closed" placeholder="Password" secureTextEntry value={password} onChangeText={setPassword} />
-        <View style={{ height: 16 }} />
-        <PrimaryButton 
-          title={isLoading ? "Creating Account..." : "Register"} 
-          onPress={handleRegister}
-          disabled={isLoading}
-        />
-        <View style={styles.row}>
-          <Text style={{ color: '#687076' }}>Already have an account?</Text>
-          <LinkButton title="Login" onPress={() => router.replace('/auth/login')} />
-        </View>
-      </View>
-      <View style={styles.dividerRow}>
-        <View style={styles.divider} />
-        <Text style={styles.dividerText}>OR</Text>
-        <View style={styles.divider} />
-      </View>
-      <View style={styles.socialRow}>
-        {/* Google Login Button */}
-        <TouchableOpacity 
-          style={styles.googleButton}
-          onPress={handleGoogleLogin}
-          disabled={isLoading}
+    <LinearGradient
+      colors={['#667eea', '#764ba2']}
+      style={styles.container}
+    >
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      
+      <ModernAlert
+        visible={alert.visible}
+        type={alert.type}
+        title={alert.title}
+        message={alert.message}
+        onClose={hideAlert}
+      />
+      
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardAvoidingView}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContainer}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
-          <View style={styles.googleIconContainer}>
-            <Ionicons name="logo-google" size={24} color="#DB4437" />
+          {/* Header */}
+          <View style={styles.header}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => router.back()}
+            >
+              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Create Account</Text>
+            <View style={styles.headerSpacer} />
           </View>
-          <Text style={styles.googleButtonText}>
-            {isLoading ? "Connecting..." : "Continue with Google"}
-          </Text>
-        </TouchableOpacity>
-        
-        <View style={{ height: 12 }} />
-        
-        {/* Facebook Login Button */}
-        <TouchableOpacity 
-          style={styles.facebookButton}
-          onPress={() => {}}
-          disabled={isLoading}
-        >
-          <View style={styles.facebookIconContainer}>
-            <Ionicons name="logo-facebook" size={24} color="#1877F2" />
+
+          {/* Main Content */}
+          <View style={styles.content}>
+            <View style={styles.welcomeContainer}>
+              <Text style={styles.welcomeTitle}>Join ArchivArt</Text>
+              <Text style={styles.welcomeSubtitle}>
+                Create your account to start exploring amazing art
+              </Text>
+            </View>
+
+            {/* Form */}
+            <View style={styles.form}>
+              <ModernTextInput
+                icon="person"
+                placeholder="Full Name"
+                value={name}
+                onChangeText={handleNameChange}
+                error={nameError}
+                autoCapitalize="words"
+              />
+              
+              <ModernTextInput
+                icon="at"
+                placeholder="Username"
+                value={username}
+                onChangeText={handleUsernameChange}
+                error={usernameError}
+                autoCapitalize="none"
+              />
+              
+              <ModernTextInput
+                icon="mail"
+                placeholder="Email Address"
+                value={email}
+                onChangeText={handleEmailChange}
+                error={emailError}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+              
+              <ModernTextInput
+                icon="call"
+                placeholder="Mobile Number (e.g., +1234567890)"
+                value={mobile}
+                onChangeText={handleMobileChange}
+                error={mobileError}
+                keyboardType="phone-pad"
+              />
+              
+              <ModernTextInput
+                icon="lock-closed"
+                placeholder="Password"
+                value={password}
+                onChangeText={handlePasswordChange}
+                error={passwordError}
+                secureTextEntry
+              />
+
+              {/* Register Button */}
+              <TouchableOpacity 
+                style={[styles.registerButton, isLoading && styles.registerButtonDisabled]}
+                onPress={handleRegister}
+                disabled={isLoading}
+              >
+                <LinearGradient
+                  colors={isLoading ? ['#a8a8a8', '#888888'] : ['#667eea', '#764ba2']}
+                  style={styles.registerButtonGradient}
+                >
+                  {isLoading ? (
+                    <View style={styles.loadingContainer}>
+                      <Animated.View style={{ transform: [{ rotate: spin }] }}>
+                        <Ionicons name="refresh" size={20} color="#FFFFFF" />
+                      </Animated.View>
+                      <Text style={styles.registerButtonText}>Creating Account...</Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.registerButtonText}>Create Account</Text>
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
+
+              {/* Login Link */}
+              <View style={styles.loginLinkContainer}>
+                <Text style={styles.loginLinkText}>Already have an account? </Text>
+                <TouchableOpacity onPress={() => router.replace('/auth/login')}>
+                  <Text style={styles.loginLinkButton}>Sign In</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Divider */}
+            <View style={styles.dividerContainer}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>OR</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            {/* Social Login */}
+            <View style={styles.socialContainer}>
+              <TouchableOpacity 
+                style={[styles.socialButton, styles.googleButton]}
+                onPress={handleGoogleLogin}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <View style={styles.socialLoadingContainer}>
+                    <Animated.View style={{ transform: [{ rotate: spin }] }}>
+                      <Ionicons name="refresh" size={20} color="#DB4437" />
+                    </Animated.View>
+                    <Text style={styles.socialButtonText}>Connecting...</Text>
+                  </View>
+                ) : (
+                  <>
+                    <Ionicons name="logo-google" size={24} color="#DB4437" />
+                    <Text style={styles.socialButtonText}>Continue with Google</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
-          <Text style={styles.facebookButtonText}>
-            Continue with Facebook
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 24,
-    backgroundColor: '#fff',
   },
-  title: {
-    fontSize: 28,
-    fontWeight: '800',
-    marginTop: 12,
-    marginBottom: 24,
+  keyboardAvoidingView: {
+    flex: 1,
   },
-  form: {},
-  row: {
+  scrollContainer: {
+    flexGrow: 1,
+    paddingBottom: 20,
+  },
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 12,
+    paddingTop: 50,
+    paddingHorizontal: 20,
+    paddingBottom: 10,
   },
-  dividerRow: {
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  headerSpacer: {
+    width: 40,
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: 20,
+  },
+  welcomeContainer: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  welcomeTitle: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  welcomeSubtitle: {
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.8)',
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  form: {
+    marginBottom: 24,
+  },
+  registerButton: {
+    marginTop: 24,
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  registerButtonDisabled: {
+    shadowOpacity: 0.1,
+    elevation: 2,
+  },
+  registerButtonGradient: {
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  registerButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loginLinkContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 20,
+  },
+  loginLinkText: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.8)',
+  },
+  loginLinkButton: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    textDecorationLine: 'underline',
+  },
+  dividerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     marginVertical: 24,
   },
-  divider: {
+  dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#E1E3E6',
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
   },
   dividerText: {
-    marginHorizontal: 8,
-    color: '#687076',
-    fontWeight: '700',
+    marginHorizontal: 16,
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.8)',
   },
-  socialRow: {},
-  googleButton: {
+  socialContainer: {
+    marginBottom: 20,
+  },
+  socialButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#DADCE0',
     borderRadius: 12,
     paddingVertical: 16,
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
-  googleIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  googleButton: {
     backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.1)',
   },
-  googleButtonText: {
+  socialButtonText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#3C4043',
-    flex: 1,
-    textAlign: 'center',
+    marginLeft: 12,
   },
-  facebookButton: {
+  socialLoadingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#1877F2',
-    borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    shadowColor: '#1877F2',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  facebookIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  facebookButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    flex: 1,
-    textAlign: 'center',
   },
 });
 

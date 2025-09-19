@@ -29,7 +29,7 @@ export interface RegisterData {
   username: string;
   email: string;
   password: string;
-  mobile?: string;
+  mobile: string;
 }
 
 export interface GoogleAuthData {
