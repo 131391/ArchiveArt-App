@@ -180,6 +180,8 @@ export default function LoginScreen() {
           showAlert('error', 'Email Verification Required', 'Please verify your Google email address and try again.');
         } else if (error.message.includes('Account disabled')) {
           showAlert('error', 'Account Disabled', 'Your account has been disabled. Please contact support.');
+        } else if (error.message.includes('Google Sign-In is not available')) {
+          showAlert('error', 'Google Sign-In Not Available', 'Google Sign-In is not available in Expo Go. Please use a development build or production build to test Google authentication.');
         } else {
           showAlert('error', 'Google Login Failed', error.message);
         }

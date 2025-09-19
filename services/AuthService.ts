@@ -1,5 +1,5 @@
+import { completeGoogleAuthFlow, signOutFromGoogle } from '@/config/google-signin';
 import { API_CONFIG, API_ENDPOINTS, buildUrl } from '@/constants/Api';
-import { signInWithGoogle, signOutFromGoogle, completeGoogleAuthFlow } from '@/config/google-signin';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface User {
@@ -412,6 +412,8 @@ class AuthService {
           throw new Error('Network error. Please check your internet connection');
         } else if (authFlowResult.error === 'PLAY_SERVICES_ERROR') {
           throw new Error('Google Play Services not available');
+        } else if (authFlowResult.error === 'GOOGLE_SIGNIN_NOT_AVAILABLE') {
+          throw new Error('Google Sign-In is not available in this environment. Please use a development build or production build.');
         } else {
           throw new Error(authFlowResult.message || 'Google Sign-In failed');
         }
@@ -460,10 +462,7 @@ class AuthService {
         name: googleResult.user.name,
         email: googleResult.user.email,
         profilePicture: googleResult.user.photo,
-        idToken: googleResult.idToken,
-        // Additional data for user creation if needed
-        givenName: googleResult.user.givenName,
-        familyName: googleResult.user.familyName,
+        mobile: '+1234567890', // Default mobile for Google users
       };
       
       console.log('🔐 Making Google authentication API call to:', buildUrl(API_ENDPOINTS.AUTH.SOCIAL_LOGIN));
