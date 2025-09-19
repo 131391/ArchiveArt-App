@@ -41,11 +41,11 @@
  */
 
 export const API_CONFIG = {
-  // BASE_URL: 'https://archivart.onrender.com',
-  BASE_URL: 'http://172.20.10.5:3000', // For emulator testing
+  BASE_URL: 'https://archivart.onrender.com', // Production URL
+  // BASE_URL: 'http://172.20.10.5:3000', // For emulator testing
   // BASE_URL: 'http://localhost:3000', // For local development
   // Enable mock mode for development when backend is not available
-  MOCK_MODE: false, // Changed to false to test with real APIs
+  MOCK_MODE: false, // Using real APIs with production backend
 };
 
 // API Endpoints organized by category
