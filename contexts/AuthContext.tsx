@@ -1,4 +1,5 @@
 import AuthService, { GoogleAuthData, LoginCredentials, RegisterData, User } from '@/services/AuthService';
+import { configureGoogleSignIn } from '@/config/google-signin';
 import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 
 interface AuthContextType {
@@ -7,7 +8,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (credentials: LoginCredentials) => Promise<void>;
   register: (userData: RegisterData) => Promise<Error | null>;
-  googleLogin: (googleData: GoogleAuthData) => Promise<Error | null>;
+  googleLogin: (googleData?: GoogleAuthData) => Promise<Error | null>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -31,6 +32,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       console.log('🔐 Initializing authentication...');
       setIsLoading(true);
+      
+      // Configure Google Sign-In
+      configureGoogleSignIn();
+      console.log('🔐 Google Sign-In configured');
       
       // Check if user is authenticated
       const isAuth = await AuthService.isAuthenticated();
@@ -90,7 +95,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const googleLogin = async (googleData: GoogleAuthData): Promise<Error | null> => {
+  const googleLogin = async (googleData?: GoogleAuthData): Promise<Error | null> => {
     try {
       setIsLoading(true);
       const authResponse = await AuthService.googleLogin(googleData);

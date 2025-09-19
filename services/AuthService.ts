@@ -1,4 +1,5 @@
 import { API_CONFIG, API_ENDPOINTS, buildUrl } from '@/constants/Api';
+import { signInWithGoogle, signOutFromGoogle } from '@/config/google-signin';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface User {
@@ -396,84 +397,100 @@ class AuthService {
     return data;
   }
 
-  public async googleLogin(googleData: GoogleAuthData): Promise<AuthResponse> {
-    console.log('🔐 Google login attempt with email:', googleData.email);
+  public async googleLogin(googleData?: GoogleAuthData): Promise<AuthResponse> {
+    console.log('🔐 Google login attempt');
     
-    // Check if we're in mock mode
-    if (API_CONFIG.MOCK_MODE) {
-      console.log('🔐 Using mock Google authentication for development');
+    try {
+      // Use real Google Sign-In
+      const googleResult = await signInWithGoogle();
       
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      console.log('🔐 Google Sign-In successful, sending to backend:', {
+        id: googleResult.user.id,
+        email: googleResult.user.email,
+        name: googleResult.user.name,
+      });
       
-      // Mock successful Google login
-      const mockUser: User = {
-        id: 2,
-        name: googleData.name,
-        username: googleData.email.split('@')[0],
-        email: googleData.email,
-        mobile: googleData.mobile || '+1234567890',
-        role: 'user',
-        is_verified: true,
+      // Check if we're in mock mode
+      if (API_CONFIG.MOCK_MODE) {
+        console.log('🔐 Using mock Google login with real Google data');
+        // Simulate API delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        const mockUser: User = {
+          id: parseInt(googleResult.user.id) || Date.now(),
+          name: googleResult.user.name,
+          username: googleResult.user.email.split('@')[0],
+          email: googleResult.user.email,
+          mobile: '+1234567890', // Default mobile for Google users
+          role: 'user',
+          is_verified: true,
+        };
+        
+        const mockResponse: AuthResponse = {
+          message: 'Google login successful (Mock Mode)',
+          accessToken: 'mock_google_access_token_' + Date.now(),
+          refreshToken: 'mock_google_refresh_token_' + Date.now(),
+          expiresIn: 3600,
+          user: mockUser,
+        };
+        
+        await this.storeTokens(mockResponse.accessToken, mockResponse.refreshToken);
+        console.log('🔐 Mock Google login successful');
+        return mockResponse;
+      }
+      
+      // Send Google data to backend for verification and user creation/login
+      const backendData = {
+        provider: 'google',
+        providerId: googleResult.user.id,
+        name: googleResult.user.name,
+        email: googleResult.user.email,
+        profilePicture: googleResult.user.photo,
+        idToken: googleResult.idToken,
       };
       
-      const mockResponse: AuthResponse = {
-        message: 'Google login successful (Mock Mode)',
-        accessToken: 'mock_google_access_token_' + Date.now(),
-        refreshToken: 'mock_google_refresh_token_' + Date.now(),
-        expiresIn: 3600,
-        user: mockUser,
-      };
+      console.log('🔐 Making real Google API call to:', buildUrl(API_ENDPOINTS.AUTH.SOCIAL_LOGIN));
+      const response = await fetch(buildUrl(API_ENDPOINTS.AUTH.SOCIAL_LOGIN), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(backendData),
+      });
+
+      if (!response.ok) {
+        let errorMessage = 'Google login failed';
+        try {
+          const errorData = await response.json();
+          
+          // Handle rate limiting specifically
+          if (errorData.error && errorData.error.includes('Too many authentication attempts')) {
+            const retryAfter = errorData.retryAfter || 900;
+            const minutes = Math.ceil(retryAfter / 60);
+            errorMessage = `Too many login attempts. Please wait ${minutes} minutes before trying again.`;
+          } else {
+            errorMessage = errorData.message || errorData.error || `HTTP ${response.status}: ${response.statusText}`;
+          }
+        } catch (parseError) {
+          console.error('Failed to parse error response:', parseError);
+          errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
+      }
+
+      const data: AuthResponse = await response.json();
       
       // Store tokens securely
-      await this.storeTokens(mockResponse.accessToken, mockResponse.refreshToken);
+      await this.storeTokens(data.accessToken, data.refreshToken);
       
       // Store user data
-      await AsyncStorage.setItem('user', JSON.stringify(mockResponse.user));
+      await AsyncStorage.setItem('user', JSON.stringify(data.user));
       
-      console.log('🔐 Mock Google login successful for user:', mockUser.email);
-      return mockResponse;
+      return data;
+    } catch (error) {
+      console.error('🔐 Google login error:', error);
+      throw error;
     }
-    
-    // Real API call (when mock mode is disabled)
-        console.log('🔐 Making real Google API call to:', buildUrl(API_ENDPOINTS.AUTH.SOCIAL_LOGIN));
-        const response = await fetch(buildUrl(API_ENDPOINTS.AUTH.SOCIAL_LOGIN), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(googleData),
-    });
-
-    if (!response.ok) {
-      let errorMessage = 'Google login failed';
-      try {
-        const errorData = await response.json();
-        
-        // Handle rate limiting specifically
-        if (errorData.error && errorData.error.includes('Too many authentication attempts')) {
-          const retryAfter = errorData.retryAfter || 900;
-          const minutes = Math.ceil(retryAfter / 60);
-          errorMessage = `Too many login attempts. Please wait ${minutes} minutes before trying again.`;
-        } else {
-          errorMessage = errorData.message || errorData.error || `HTTP ${response.status}: ${response.statusText}`;
-        }
-      } catch (parseError) {
-        console.error('Failed to parse error response:', parseError);
-        errorMessage = `HTTP ${response.status}: ${response.statusText}`;
-      }
-      throw new Error(errorMessage);
-    }
-
-    const data: AuthResponse = await response.json();
-    
-    // Store tokens securely
-    await this.storeTokens(data.accessToken, data.refreshToken);
-    
-    // Store user data
-    await AsyncStorage.setItem('user', JSON.stringify(data.user));
-    
-    return data;
   }
 
   public async logout(): Promise<void> {
@@ -519,6 +536,15 @@ class AuthService {
     } catch (error) {
       console.error('🔐 Logout API call failed with error:', error);
     } finally {
+      // Sign out from Google
+      try {
+        await signOutFromGoogle();
+        console.log('🔐 Google Sign-Out successful');
+      } catch (error) {
+        console.error('🔐 Google Sign-Out error:', error);
+        // Continue with local logout even if Google sign-out fails
+      }
+      
       // Always clear local storage
       console.log('🔐 Clearing stored tokens and user data');
       await this.clearStoredTokens();

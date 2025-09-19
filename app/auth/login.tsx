@@ -154,28 +154,23 @@ export default function LoginScreen() {
     hideAlert();
     
     try {
-      // For now, we'll use mock data. In a real app, you'd integrate with Google Sign-In
-      const mockGoogleData = {
-        provider: 'google',
-        providerId: 'google_123456789',
-        name: 'John Doe',
-        email: 'john@gmail.com',
-        profilePicture: 'https://example.com/avatar.jpg',
-      };
+      console.log('🔐 Google login button clicked');
       
-      const error = await googleLogin(mockGoogleData);
+      const error = await googleLogin();
       
       if (error) {
-        const errorMessage = error.message;
-        showAlert(`Google login failed: ${errorMessage}`, 'error');
+        console.error('🔐 Google login error:', error);
+        showAlert('error', 'Login Failed', error.message);
       } else {
-        showAlert('Google login successful! Welcome!', 'success');
+        showAlert('success', 'Login Successful', 'Welcome back!');
         setTimeout(() => {
           router.replace('/welcome');
         }, 1500);
       }
-    } catch (err) {
-      showAlert('Google login failed. Please try again.', 'error');
+    } catch (error) {
+      console.error('🔐 Google login error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Google login failed';
+      showAlert('error', 'Login Failed', errorMessage);
     } finally {
       setIsLoading(false);
     }

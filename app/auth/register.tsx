@@ -311,16 +311,7 @@ export default function RegisterScreen() {
       setIsLoading(true);
       console.log('🔐 Google login button clicked');
       
-      // For now, we'll use mock data. In a real app, you'd integrate with Google Sign-In
-      const mockGoogleData = {
-        provider: 'google',
-        providerId: 'google_123456789',
-        name: 'John Doe',
-        email: 'john@gmail.com',
-        profilePicture: 'https://example.com/avatar.jpg',
-      };
-      
-      const error = await googleLogin(mockGoogleData) as Error | null;
+      const error = await googleLogin() as Error | null;
       
       if (error) {
         // Google login failed with error
