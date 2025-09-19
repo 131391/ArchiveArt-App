@@ -1,5 +1,5 @@
 import AuthService, { GoogleAuthData, LoginCredentials, RegisterData, User } from '@/services/AuthService';
-import { configureGoogleSignIn } from '@/config/google-signin';
+import * as GoogleSignIn from '../config/google-signin';
 import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 
 interface AuthContextType {
@@ -34,7 +34,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsLoading(true);
       
       // Configure Google Sign-In
-      configureGoogleSignIn();
+      GoogleSignIn.configureGoogleSignIn();
       console.log('🔐 Google Sign-In configured');
       
       // Check if user is authenticated

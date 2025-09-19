@@ -1,4 +1,4 @@
-import { completeGoogleAuthFlow, signOutFromGoogle } from '@/config/google-signin';
+import * as GoogleSignIn from '../config/google-signin';
 import { API_CONFIG, API_ENDPOINTS, buildUrl } from '@/constants/Api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -401,8 +401,15 @@ class AuthService {
     console.log('🔐 Starting Google authentication flow');
     
     try {
+      // Debug: Check if the function is available
+      console.log('🔐 completeGoogleAuthFlow function:', typeof GoogleSignIn.completeGoogleAuthFlow);
+      
+      if (typeof GoogleSignIn.completeGoogleAuthFlow !== 'function') {
+        throw new Error('completeGoogleAuthFlow function is not available');
+      }
+      
       // Step 1: Complete Google Sign-In flow
-      const authFlowResult = await completeGoogleAuthFlow();
+      const authFlowResult = await GoogleSignIn.completeGoogleAuthFlow();
       
       if (!authFlowResult.success) {
         // Handle Google Sign-In errors
@@ -591,7 +598,7 @@ class AuthService {
     } finally {
       // Sign out from Google
       try {
-        await signOutFromGoogle();
+        await GoogleSignIn.signOutFromGoogle();
         console.log('🔐 Google Sign-Out successful');
       } catch (error) {
         console.error('🔐 Google Sign-Out error:', error);
