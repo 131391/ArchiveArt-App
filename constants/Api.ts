@@ -61,6 +61,7 @@ export const API_ENDPOINTS = {
     FORGOT_PASSWORD: '/api/auth/forgot-password',
     RESET_PASSWORD: '/api/auth/reset-password',
     VERIFY_EMAIL: '/api/auth/verify-email',
+    CHECK_USERNAME: '/api/auth/check-username',
   },
   
   // Media endpoints
@@ -411,4 +412,62 @@ export function validateMobile(mobile: string): boolean {
 export function validateIndianMobile(mobile: string): boolean {
   const mobileRegex = /^[6-9]\d{9}$/;
   return mobileRegex.test(mobile.trim());
+}
+
+// Username validation types
+export interface UsernameCheckResponse {
+  available: boolean;
+  suggestions: string[];
+  message: string;
+  error?: string;
+}
+
+/**
+ * Checks username availability using the API
+ * @param username - Username to check
+ * @returns Promise with username availability and suggestions
+ */
+export async function checkUsernameAvailability(username: string): Promise<UsernameCheckResponse> {
+  if (!username || username.trim().length < 3) {
+    return {
+      available: false,
+      suggestions: [],
+      message: 'Username must be at least 3 characters long',
+      error: 'Username must be 3-50 characters long'
+    };
+  }
+
+  try {
+    const url = `${buildUrl(API_ENDPOINTS.AUTH.CHECK_USERNAME)}?username=${encodeURIComponent(username.trim())}`;
+    console.log('🔐 Checking username availability:', url);
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const data = await response.json();
+    console.log('🔐 Username check response:', data);
+
+    if (!response.ok) {
+      return {
+        available: false,
+        suggestions: [],
+        message: data.error || 'Failed to check username availability',
+        error: data.error
+      };
+    }
+
+    return data;
+  } catch (error) {
+    console.error('🔐 Username check error:', error);
+    return {
+      available: false,
+      suggestions: [],
+      message: 'Failed to check username availability',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
 }

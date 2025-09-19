@@ -1,6 +1,6 @@
 import { ModernAlert } from '@/components/ui/ModernAlert';
 import { ModernTextInput } from '@/components/ui/ModernTextInput';
-import { validateEmail, validateIndianMobile, validatePassword, validatePasswordDetailed } from '@/constants/Api';
+import { validateEmail, validateIndianMobile, validatePassword, validatePasswordDetailed, checkUsernameAvailability, UsernameCheckResponse } from '@/constants/Api';
 import { useAuth } from '@/contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -45,6 +45,10 @@ export default function RegisterScreen() {
     hasSpecialChar: false,
     notCommon: false,
   });
+  
+  // Username validation state
+  const [usernameValidation, setUsernameValidation] = useState<UsernameCheckResponse | null>(null);
+  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
   
   // Alert state
   const [alert, setAlert] = useState<{
@@ -101,14 +105,42 @@ export default function RegisterScreen() {
     }
   };
 
-  const handleUsernameChange = (text: string) => {
+  const handleUsernameChange = async (text: string) => {
     setUsername(text);
+    setUsernameValidation(null);
+    
+    // Basic validation first
     if (text.trim().length < 3) {
       setUsernameError('Username must be at least 3 characters long');
-    } else if (!/^[a-zA-Z0-9_]+$/.test(text)) {
+      return;
+    }
+    
+    if (!/^[a-zA-Z0-9_]+$/.test(text)) {
       setUsernameError('Username can only contain letters, numbers, and underscores');
-    } else {
-      setUsernameError('');
+      return;
+    }
+    
+    // Clear basic errors
+    setUsernameError('');
+    
+    // Check username availability with API (debounced)
+    if (text.trim().length >= 3) {
+      setIsCheckingUsername(true);
+      try {
+        const validation = await checkUsernameAvailability(text.trim());
+        setUsernameValidation(validation);
+        
+        if (!validation.available) {
+          setUsernameError(validation.message);
+        } else {
+          setUsernameError('');
+        }
+      } catch (error) {
+        console.error('🔐 Username validation error:', error);
+        setUsernameError('Failed to check username availability');
+      } finally {
+        setIsCheckingUsername(false);
+      }
     }
   };
 
@@ -194,6 +226,12 @@ export default function RegisterScreen() {
       hasErrors = true;
     } else if (!/^[a-zA-Z0-9_]+$/.test(username)) {
       setUsernameError('Username can only contain letters, numbers, and underscores');
+      hasErrors = true;
+    } else if (usernameValidation && !usernameValidation.available) {
+      setUsernameError(usernameValidation.message);
+      hasErrors = true;
+    } else if (isCheckingUsername) {
+      setUsernameError('Please wait while we check username availability');
       hasErrors = true;
     }
 
@@ -366,6 +404,56 @@ export default function RegisterScreen() {
                 error={usernameError}
                 autoCapitalize="none"
               />
+              
+              {/* Username Validation and Suggestions */}
+              {username && username.trim().length >= 3 && (
+                <View style={styles.usernameValidationContainer}>
+                  {isCheckingUsername ? (
+                    <View style={styles.usernameCheckingContainer}>
+                      <Ionicons name="hourglass" size={16} color="#FFA500" />
+                      <Text style={styles.usernameCheckingText}>Checking availability...</Text>
+                    </View>
+                  ) : usernameValidation ? (
+                    <View>
+                      <View style={styles.usernameStatusContainer}>
+                        <Ionicons 
+                          name={usernameValidation.available ? "checkmark-circle" : "close-circle"} 
+                          size={16} 
+                          color={usernameValidation.available ? "#4CAF50" : "#F44336"} 
+                        />
+                        <Text style={[
+                          styles.usernameStatusText,
+                          { color: usernameValidation.available ? "#4CAF50" : "#F44336" }
+                        ]}>
+                          {usernameValidation.message}
+                        </Text>
+                      </View>
+                      
+                      {/* Username Suggestions */}
+                      {!usernameValidation.available && usernameValidation.suggestions.length > 0 && (
+                        <View style={styles.usernameSuggestionsContainer}>
+                          <Text style={styles.usernameSuggestionsTitle}>Suggested usernames:</Text>
+                          <View style={styles.usernameSuggestionsList}>
+                            {usernameValidation.suggestions.map((suggestion, index) => (
+                              <TouchableOpacity
+                                key={index}
+                                style={styles.usernameSuggestionItem}
+                                onPress={() => {
+                                  setUsername(suggestion);
+                                  handleUsernameChange(suggestion);
+                                }}
+                              >
+                                <Text style={styles.usernameSuggestionText}>{suggestion}</Text>
+                                <Ionicons name="arrow-forward" size={14} color="#667eea" />
+                              </TouchableOpacity>
+                            ))}
+                          </View>
+                        </View>
+                      )}
+                    </View>
+                  ) : null}
+                </View>
+              )}
               
               <ModernTextInput
                 icon="mail"
@@ -726,6 +814,60 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginLeft: 8,
     flex: 1,
+  },
+  usernameValidationContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  usernameCheckingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  usernameCheckingText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#FFA500',
+    marginLeft: 8,
+  },
+  usernameStatusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  usernameStatusText: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginLeft: 8,
+  },
+  usernameSuggestionsContainer: {
+    marginTop: 8,
+  },
+  usernameSuggestionsTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 8,
+  },
+  usernameSuggestionsList: {
+    gap: 6,
+  },
+  usernameSuggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 8,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  usernameSuggestionText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#FFFFFF',
   },
 });
 
