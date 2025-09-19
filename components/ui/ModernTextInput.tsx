@@ -21,6 +21,7 @@ interface ModernTextInputProps {
   onFocus?: () => void;
   onBlur?: () => void;
   style?: any;
+  prefix?: string;
 }
 
 export const ModernTextInput: React.FC<ModernTextInputProps> = ({
@@ -35,6 +36,7 @@ export const ModernTextInput: React.FC<ModernTextInputProps> = ({
   onFocus,
   onBlur,
   style,
+  prefix,
 }) => {
   const [isFocused, setIsFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -78,6 +80,10 @@ export const ModernTextInput: React.FC<ModernTextInputProps> = ({
             color={isFocused ? '#667eea' : error ? '#ff4757' : '#8e8e93'}
           />
         </View>
+        
+        {prefix && (
+          <Text style={styles.prefixText}>{prefix}</Text>
+        )}
         
         <TextInput
           style={styles.textInput}
@@ -149,6 +155,12 @@ const styles = StyleSheet.create({
   },
   iconContainer: {
     marginRight: 12,
+  },
+  prefixText: {
+    fontSize: 16,
+    color: '#2c3e50',
+    fontWeight: '600',
+    marginRight: 8,
   },
   textInput: {
     flex: 1,

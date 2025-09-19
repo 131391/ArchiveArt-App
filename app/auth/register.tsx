@@ -121,8 +121,14 @@ export default function RegisterScreen() {
   };
 
   const handleMobileChange = (text: string) => {
-    // Remove any non-digit characters except + at the beginning
-    const cleanedText = text.replace(/[^\d]/g, '');
+    // Remove +91 prefix if user types it, and remove any non-digit characters
+    let cleanedText = text.replace(/^\+91/, '').replace(/[^\d]/g, '');
+    
+    // Limit to 10 digits
+    if (cleanedText.length > 10) {
+      cleanedText = cleanedText.substring(0, 10);
+    }
+    
     setMobile(cleanedText);
     
     if (cleanedText && !validateIndianMobile(cleanedText)) {
@@ -321,22 +327,15 @@ export default function RegisterScreen() {
                 autoCapitalize="none"
               />
               
-              <View style={styles.mobileInputContainer}>
-                <View style={styles.countryCodeContainer}>
-                  <Text style={styles.countryCodeText}>+91</Text>
-                </View>
-                <View style={styles.mobileInputWrapper}>
-                  <ModernTextInput
-                    icon="call"
-                    placeholder="Mobile Number (e.g., 9876543210)"
-                    value={mobile}
-                    onChangeText={handleMobileChange}
-                    error={mobileError}
-                    keyboardType="phone-pad"
-                    style={styles.mobileInput}
-                  />
-                </View>
-              </View>
+              <ModernTextInput
+                icon="call"
+                placeholder="Mobile Number (e.g., 9876543210)"
+                value={mobile}
+                onChangeText={handleMobileChange}
+                error={mobileError}
+                keyboardType="phone-pad"
+                prefix="+91"
+              />
               
               <ModernTextInput
                 icon="lock-closed"
@@ -568,31 +567,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  mobileInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  countryCodeContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    marginRight: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  countryCodeText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  mobileInputWrapper: {
-    flex: 1,
-  },
-  mobileInput: {
-    marginBottom: 0,
   },
 });
 
