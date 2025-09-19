@@ -344,3 +344,13 @@ export function validateMobile(mobile: string): boolean {
   const mobileRegex = /^\+[1-9]\d{1,14}$/;
   return mobileRegex.test(mobile.trim());
 }
+
+/**
+ * Validates Indian mobile number format (10 digits)
+ * @param mobile - Mobile number string to validate (without country code)
+ * @returns boolean indicating if mobile number is valid
+ */
+export function validateIndianMobile(mobile: string): boolean {
+  const mobileRegex = /^[6-9]\d{9}$/;
+  return mobileRegex.test(mobile.trim());
+}

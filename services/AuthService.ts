@@ -307,13 +307,44 @@ class AuthService {
   }
 
   public async register(userData: RegisterData): Promise<AuthResponse> {
-    const response = await fetch(buildUrl(API_ENDPOINTS.AUTH.REGISTER), {
+    console.log('🔐 AuthService.register called');
+    console.log('🔐 MOCK_MODE:', API_CONFIG.MOCK_MODE);
+    console.log('🔐 BASE_URL:', API_CONFIG.BASE_URL);
+    console.log('🔐 Register data:', JSON.stringify(userData, null, 2));
+    
+    if (API_CONFIG.MOCK_MODE) {
+      console.log('🔐 Using mock registration');
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const mockResponse: AuthResponse = {
+        user: {
+          id: Date.now(),
+          name: userData.name,
+          email: userData.email,
+          role: 'user',
+        },
+        accessToken: 'mock_access_token_' + Date.now(),
+        refreshToken: 'mock_refresh_token_' + Date.now(),
+      };
+      
+      await this.storeTokens(mockResponse.accessToken, mockResponse.refreshToken);
+      console.log('🔐 Mock registration successful');
+      return mockResponse;
+    }
+    
+    const registerUrl = buildUrl(API_ENDPOINTS.AUTH.REGISTER);
+    console.log('🔐 Making registration API call to:', registerUrl);
+    
+    const response = await fetch(registerUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(userData),
     });
+    
+    console.log('🔐 Registration API response status:', response.status);
 
     if (!response.ok) {
       let errorMessage = 'Registration failed';

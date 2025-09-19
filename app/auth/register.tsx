@@ -1,22 +1,22 @@
-import { ModernTextInput } from '@/components/ui/ModernTextInput';
 import { ModernAlert } from '@/components/ui/ModernAlert';
+import { ModernTextInput } from '@/components/ui/ModernTextInput';
+import { validateEmail, validateIndianMobile, validatePassword } from '@/constants/Api';
 import { useAuth } from '@/contexts/AuthContext';
-import { validateEmail, validatePassword, validateMobile } from '@/constants/Api';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import React, { useState, useRef, useEffect } from 'react';
-import { 
-  Animated, 
-  Dimensions, 
-  KeyboardAvoidingView, 
-  Platform, 
-  ScrollView, 
-  StatusBar, 
-  StyleSheet, 
-  Text, 
-  TouchableOpacity, 
-  View 
+import React, { useEffect, useRef, useState } from 'react';
+import {
+    Animated,
+    Dimensions,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
@@ -121,9 +121,12 @@ export default function RegisterScreen() {
   };
 
   const handleMobileChange = (text: string) => {
-    setMobile(text);
-    if (text && !validateMobile(text)) {
-      setMobileError('Please enter a valid mobile number (e.g., +1234567890)');
+    // Remove any non-digit characters except + at the beginning
+    const cleanedText = text.replace(/[^\d]/g, '');
+    setMobile(cleanedText);
+    
+    if (cleanedText && !validateIndianMobile(cleanedText)) {
+      setMobileError('Please enter a valid 10-digit mobile number');
     } else {
       setMobileError('');
     }
@@ -180,8 +183,8 @@ export default function RegisterScreen() {
     if (!mobile.trim()) {
       setMobileError('Mobile number is required');
       hasErrors = true;
-    } else if (!validateMobile(mobile)) {
-      setMobileError('Please enter a valid mobile number (e.g., +1234567890)');
+    } else if (!validateIndianMobile(mobile)) {
+      setMobileError('Please enter a valid 10-digit mobile number');
       hasErrors = true;
     }
 
@@ -199,7 +202,7 @@ export default function RegisterScreen() {
         username: username.trim(),
         email: email.trim(),
         password,
-        mobile: mobile.trim(),
+        mobile: `+91${mobile.trim()}`,
       });
       
       showAlert('success', 'Registration Successful', 'Your account has been created successfully!');
@@ -318,14 +321,22 @@ export default function RegisterScreen() {
                 autoCapitalize="none"
               />
               
-              <ModernTextInput
-                icon="call"
-                placeholder="Mobile Number (e.g., +1234567890)"
-                value={mobile}
-                onChangeText={handleMobileChange}
-                error={mobileError}
-                keyboardType="phone-pad"
-              />
+              <View style={styles.mobileInputContainer}>
+                <View style={styles.countryCodeContainer}>
+                  <Text style={styles.countryCodeText}>+91</Text>
+                </View>
+                <View style={styles.mobileInputWrapper}>
+                  <ModernTextInput
+                    icon="call"
+                    placeholder="Mobile Number (e.g., 9876543210)"
+                    value={mobile}
+                    onChangeText={handleMobileChange}
+                    error={mobileError}
+                    keyboardType="phone-pad"
+                    style={styles.mobileInput}
+                  />
+                </View>
+              </View>
               
               <ModernTextInput
                 icon="lock-closed"
@@ -557,6 +568,31 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  mobileInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  countryCodeContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  countryCodeText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  mobileInputWrapper: {
+    flex: 1,
+  },
+  mobileInput: {
+    marginBottom: 0,
   },
 });
 
