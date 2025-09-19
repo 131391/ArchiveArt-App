@@ -18,6 +18,22 @@ expo-env.d.ts
 *.key
 *.mobileprovision
 
+# Build directories
+android/
+ios/
+build/
+dist/
+
+# Test files
+test-*.js
+test-*.ts
+
+# SHA1 keys and certificates
+*-sha1-key.txt
+generate-sha1.sh
+*.keystore
+*.jks
+
 # Metro
 .metro-health-check*
 
