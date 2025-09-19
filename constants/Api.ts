@@ -325,13 +325,71 @@ export function validatePassword(password: string): {
   if (!/\d/.test(password)) {
     errors.push('Password must contain at least one number');
   }
-  if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
-    errors.push('Password must contain at least one special character');
+  if (!/[@$!%*?&]/.test(password)) {
+    errors.push('Password must contain at least one special character from @$!%*?&');
+  }
+
+  // Check for common passwords
+  const commonPasswords = [
+    'password', '123456', '123456789', 'qwerty', 'abc123', 'password123',
+    'admin', 'letmein', 'welcome', 'monkey', '1234567890', 'password1',
+    'qwerty123', 'dragon', 'master', 'hello', 'freedom', 'whatever',
+    'qazwsx', 'trustno1', 'jordan23', 'harley', 'password1', 'welcome123'
+  ];
+  
+  if (commonPasswords.includes(password.toLowerCase())) {
+    errors.push(`"${password}" is a common password and is blocked`);
   }
 
   return {
     isValid: errors.length === 0,
     errors,
+  };
+}
+
+/**
+ * Validates password and returns detailed requirements status
+ * @param password - Password string to validate
+ * @returns object with individual requirement status
+ */
+export function validatePasswordDetailed(password: string): {
+  isValid: boolean;
+  requirements: {
+    minLength: boolean;
+    hasUppercase: boolean;
+    hasLowercase: boolean;
+    hasNumber: boolean;
+    hasSpecialChar: boolean;
+    notCommon: boolean;
+  };
+} {
+  const minLength = password.length >= 8;
+  const hasUppercase = /[A-Z]/.test(password);
+  const hasLowercase = /[a-z]/.test(password);
+  const hasNumber = /\d/.test(password);
+  const hasSpecialChar = /[@$!%*?&]/.test(password);
+  
+  // Common passwords to block
+  const commonPasswords = [
+    'password', '123456', '123456789', 'qwerty', 'abc123', 'password123',
+    'admin', 'letmein', 'welcome', 'monkey', '1234567890', 'password1',
+    'qwerty123', 'dragon', 'master', 'hello', 'freedom', 'whatever',
+    'qazwsx', 'trustno1', 'jordan23', 'harley', 'password1', 'welcome123'
+  ];
+  const notCommon = !commonPasswords.includes(password.toLowerCase());
+  
+  const isValid = minLength && hasUppercase && hasLowercase && hasNumber && hasSpecialChar && notCommon;
+  
+  return {
+    isValid,
+    requirements: {
+      minLength,
+      hasUppercase,
+      hasLowercase,
+      hasNumber,
+      hasSpecialChar,
+      notCommon,
+    },
   };
 }
 

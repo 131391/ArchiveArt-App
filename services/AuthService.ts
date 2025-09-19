@@ -348,8 +348,10 @@ class AuthService {
 
     if (!response.ok) {
       let errorMessage = 'Registration failed';
+      let errorDetails = '';
       try {
         const errorData = await response.json();
+        console.log('🔐 Registration API error response:', errorData);
         
         // Handle rate limiting specifically
         if (errorData.error && errorData.error.includes('Too many authentication attempts')) {
@@ -358,21 +360,31 @@ class AuthService {
           errorMessage = `Too many registration attempts. Please wait ${minutes} minutes before trying again.`;
         } else {
           errorMessage = errorData.message || errorData.error || `HTTP ${response.status}: ${response.statusText}`;
+          errorDetails = errorData.details || errorData.errors || '';
         }
       } catch (parseError) {
-        console.error('Failed to parse error response:', parseError);
+        console.error('🔐 Failed to parse registration error response:', parseError);
         errorMessage = `HTTP ${response.status}: ${response.statusText}`;
       }
-      throw new Error(errorMessage);
+      
+      const fullErrorMessage = errorDetails ? `${errorMessage}\n\nDetails: ${errorDetails}` : errorMessage;
+      throw new Error(fullErrorMessage);
     }
 
     const data: AuthResponse = await response.json();
+    console.log('🔐 Registration API success response:', {
+      user: data.user,
+      hasAccessToken: !!data.accessToken,
+      hasRefreshToken: !!data.refreshToken,
+    });
     
     // Store tokens securely
     await this.storeTokens(data.accessToken, data.refreshToken);
+    console.log('🔐 Registration tokens stored successfully');
     
     // Store user data
     await AsyncStorage.setItem('user', JSON.stringify(data.user));
+    console.log('🔐 Registration user data stored successfully');
     
     return data;
   }

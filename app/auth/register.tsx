@@ -1,22 +1,22 @@
 import { ModernAlert } from '@/components/ui/ModernAlert';
 import { ModernTextInput } from '@/components/ui/ModernTextInput';
-import { validateEmail, validateIndianMobile, validatePassword } from '@/constants/Api';
+import { validateEmail, validateIndianMobile, validatePassword, validatePasswordDetailed } from '@/constants/Api';
 import { useAuth } from '@/contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-    Animated,
-    Dimensions,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  Animated,
+  Dimensions,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
@@ -35,6 +35,16 @@ export default function RegisterScreen() {
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [mobileError, setMobileError] = useState('');
+  
+  // Password requirements state
+  const [passwordRequirements, setPasswordRequirements] = useState({
+    minLength: false,
+    hasUppercase: false,
+    hasLowercase: false,
+    hasNumber: false,
+    hasSpecialChar: false,
+    notCommon: false,
+  });
   
   // Alert state
   const [alert, setAlert] = useState<{
@@ -113,9 +123,26 @@ export default function RegisterScreen() {
 
   const handlePasswordChange = (text: string) => {
     setPassword(text);
-    if (text && !validatePassword(text)) {
-      setPasswordError('Password must be at least 8 characters with uppercase, lowercase, number, and special character');
+    
+    if (text) {
+      const validation = validatePasswordDetailed(text);
+      setPasswordRequirements(validation.requirements);
+      
+      if (!validation.isValid) {
+        const passwordValidation = validatePassword(text);
+        setPasswordError(passwordValidation.errors.join(', '));
+      } else {
+        setPasswordError('');
+      }
     } else {
+      setPasswordRequirements({
+        minLength: false,
+        hasUppercase: false,
+        hasLowercase: false,
+        hasNumber: false,
+        hasSpecialChar: false,
+        notCommon: false,
+      });
       setPasswordError('');
     }
   };
@@ -181,9 +208,12 @@ export default function RegisterScreen() {
     if (!password) {
       setPasswordError('Password is required');
       hasErrors = true;
-    } else if (!validatePassword(password)) {
-      setPasswordError('Password must be at least 8 characters with uppercase, lowercase, number, and special character');
-      hasErrors = true;
+    } else {
+      const passwordValidation = validatePassword(password);
+      if (!passwordValidation.isValid) {
+        setPasswordError(passwordValidation.errors.join(', '));
+        hasErrors = true;
+      }
     }
 
     if (!mobile.trim()) {
@@ -262,8 +292,7 @@ export default function RegisterScreen() {
       <ModernAlert
         visible={alert.visible}
         type={alert.type}
-        title={alert.title}
-        message={alert.message}
+        message={alert.title ? `${alert.title}\n\n${alert.message}` : alert.message}
         onClose={hideAlert}
       />
       
@@ -329,7 +358,7 @@ export default function RegisterScreen() {
               
               <ModernTextInput
                 icon="call"
-                placeholder="Mobile Number (e.g., 9876543210)"
+                placeholder="Mobile Number"
                 value={mobile}
                 onChangeText={handleMobileChange}
                 error={mobileError}
@@ -345,6 +374,91 @@ export default function RegisterScreen() {
                 error={passwordError}
                 secureTextEntry
               />
+              
+              {/* Password Requirements */}
+              {password && (
+                <View style={styles.passwordRequirementsContainer}>
+                  <Text style={styles.passwordRequirementsTitle}>Password Requirements:</Text>
+                  <View style={styles.requirementItem}>
+                    <Ionicons 
+                      name={passwordRequirements.minLength ? "checkmark-circle" : "close-circle"} 
+                      size={16} 
+                      color={passwordRequirements.minLength ? "#4CAF50" : "#F44336"} 
+                    />
+                    <Text style={[
+                      styles.requirementText,
+                      { color: passwordRequirements.minLength ? "#4CAF50" : "#F44336" }
+                    ]}>
+                      Minimum 8 characters ({password.length >= 8 ? "✅" : "❌"} "{password}" has {password.length})
+                    </Text>
+                  </View>
+                  <View style={styles.requirementItem}>
+                    <Ionicons 
+                      name={passwordRequirements.hasUppercase ? "checkmark-circle" : "close-circle"} 
+                      size={16} 
+                      color={passwordRequirements.hasUppercase ? "#4CAF50" : "#F44336"} 
+                    />
+                    <Text style={[
+                      styles.requirementText,
+                      { color: passwordRequirements.hasUppercase ? "#4CAF50" : "#F44336" }
+                    ]}>
+                      At least 1 uppercase letter ({passwordRequirements.hasUppercase ? "✅" : "❌"} missing)
+                    </Text>
+                  </View>
+                  <View style={styles.requirementItem}>
+                    <Ionicons 
+                      name={passwordRequirements.hasLowercase ? "checkmark-circle" : "close-circle"} 
+                      size={16} 
+                      color={passwordRequirements.hasLowercase ? "#4CAF50" : "#F44336"} 
+                    />
+                    <Text style={[
+                      styles.requirementText,
+                      { color: passwordRequirements.hasLowercase ? "#4CAF50" : "#F44336" }
+                    ]}>
+                      At least 1 lowercase letter ({passwordRequirements.hasLowercase ? "✅" : "❌"} has lowercase)
+                    </Text>
+                  </View>
+                  <View style={styles.requirementItem}>
+                    <Ionicons 
+                      name={passwordRequirements.hasNumber ? "checkmark-circle" : "close-circle"} 
+                      size={16} 
+                      color={passwordRequirements.hasNumber ? "#4CAF50" : "#F44336"} 
+                    />
+                    <Text style={[
+                      styles.requirementText,
+                      { color: passwordRequirements.hasNumber ? "#4CAF50" : "#F44336" }
+                    ]}>
+                      At least 1 number ({passwordRequirements.hasNumber ? "✅" : "❌"} missing)
+                    </Text>
+                  </View>
+                  <View style={styles.requirementItem}>
+                    <Ionicons 
+                      name={passwordRequirements.hasSpecialChar ? "checkmark-circle" : "close-circle"} 
+                      size={16} 
+                      color={passwordRequirements.hasSpecialChar ? "#4CAF50" : "#F44336"} 
+                    />
+                    <Text style={[
+                      styles.requirementText,
+                      { color: passwordRequirements.hasSpecialChar ? "#4CAF50" : "#F44336" }
+                    ]}>
+                      At least 1 special character from @$!%*?& ({passwordRequirements.hasSpecialChar ? "✅" : "❌"} missing)
+                    </Text>
+                  </View>
+                  <View style={styles.requirementItem}>
+                    <Ionicons 
+                      name={passwordRequirements.notCommon ? "checkmark-circle" : "close-circle"} 
+                      size={16} 
+                      color={passwordRequirements.notCommon ? "#4CAF50" : "#F44336"} 
+                    />
+                    <Text style={[
+                      styles.requirementText,
+                      { color: passwordRequirements.notCommon ? "#4CAF50" : "#F44336" }
+                    ]}>
+                      Not a common password ({passwordRequirements.notCommon ? "✅" : "❌"} "{password}" is blocked)
+                    </Text>
+                  </View>
+                </View>
+              )}
 
               {/* Register Button */}
               <TouchableOpacity 
@@ -567,6 +681,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  passwordRequirementsContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  passwordRequirementsTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 12,
+  },
+  requirementItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  requirementText: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginLeft: 8,
+    flex: 1,
   },
 });
 
