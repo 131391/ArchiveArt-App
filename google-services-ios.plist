@@ -7,7 +7,7 @@
 	<key>REVERSED_CLIENT_ID</key>
 	<string>com.googleusercontent.apps.245858141100-64maf1nnom0omlleevt52cudkepm5vgi</string>
 	<key>API_KEY</key>
-	<string>your-ios-api-key</string>
+	<string>your_ios_api_key_here</string>
 	<key>GCM_SENDER_ID</key>
 	<string>245858141100</string>
 	<key>PLIST_VERSION</key>
@@ -15,9 +15,9 @@
 	<key>BUNDLE_ID</key>
 	<string>com.archivart.app</string>
 	<key>PROJECT_ID</key>
-	<string>archivart-app</string>
+	<string>archivart-app-12345</string>
 	<key>STORAGE_BUCKET</key>
-	<string>archivart-app.appspot.com</string>
+	<string>archivart-app-12345.appspot.com</string>
 	<key>IS_ADS_ENABLED</key>
 	<false></false>
 	<key>IS_ANALYTICS_ENABLED</key>
@@ -29,6 +29,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:245858141100:ios:your-ios-app-id</string>
+	<string>1:245858141100:ios:your_ios_app_id</string>
 </dict>
 </plist>

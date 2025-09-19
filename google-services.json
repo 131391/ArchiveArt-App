@@ -1,13 +1,13 @@
 {
   "project_info": {
     "project_number": "245858141100",
-    "project_id": "archivart-app",
-    "storage_bucket": "archivart-app.appspot.com"
+    "project_id": "archivart-app-12345",
+    "storage_bucket": "archivart-app-12345.appspot.com"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:245858141100:android:your-android-app-id",
+        "mobilesdk_app_id": "1:245858141100:android:your_android_app_id",
         "android_client_info": {
           "package_name": "com.archivart.app"
         }
@@ -18,7 +18,7 @@
           "client_type": 1,
           "android_info": {
             "package_name": "com.archivart.app",
-            "certificate_hash": "your-sha1-fingerprint"
+            "certificate_hash": "your_sha1_fingerprint_here"
           }
         },
         {
@@ -28,7 +28,7 @@
       ],
       "api_key": [
         {
-          "current_key": "your-android-api-key"
+          "current_key": "your_android_api_key_here"
         }
       ],
       "services": {
