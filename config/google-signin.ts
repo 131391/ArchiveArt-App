@@ -1,4 +1,14 @@
-import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+// Conditional import for Google Sign-In (only available in development builds)
+let GoogleSignin: any = null;
+let statusCodes: any = null;
+
+try {
+  const googleSignInModule = require('@react-native-google-signin/google-signin');
+  GoogleSignin = googleSignInModule.GoogleSignin;
+  statusCodes = googleSignInModule.statusCodes;
+} catch (error) {
+  console.warn('Google Sign-In module not available in this environment (Expo Go)');
+}
 
 // Google Sign-In Configuration
 // NOTE: Replace these placeholder values with your actual Google OAuth credentials
@@ -20,13 +30,7 @@ export const GOOGLE_CONFIG = {
 
 // Check if Google Sign-In native module is available
 export const isGoogleSignInAvailable = (): boolean => {
-  try {
-    // This will throw an error if the native module is not available (e.g., in Expo Go)
-    return GoogleSignin !== undefined && GoogleSignin.configure !== undefined;
-  } catch (error) {
-    console.warn('Google Sign-In native module not available:', error);
-    return false;
-  }
+  return GoogleSignin !== null && GoogleSignin !== undefined && GoogleSignin.configure !== undefined;
 };
 
 // Configure Google Sign-In
@@ -82,17 +86,19 @@ export const signInWithGoogle = async () => {
   } catch (error: any) {
     console.error('Google Sign-In error:', error);
     
-    if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-      throw new Error('Sign in was cancelled by user');
-    } else if (error.code === statusCodes.IN_PROGRESS) {
-      throw new Error('Sign in is already in progress');
-    } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-      throw new Error('Google Play Services not available');
-    } else if (error.code === statusCodes.SIGN_IN_REQUIRED) {
-      throw new Error('Sign in required');
-    } else {
-      throw new Error(error.message || 'Google Sign-In failed');
+    if (statusCodes) {
+      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+        throw new Error('Sign in was cancelled by user');
+      } else if (error.code === statusCodes.IN_PROGRESS) {
+        throw new Error('Sign in is already in progress');
+      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        throw new Error('Google Play Services not available');
+      } else if (error.code === statusCodes.SIGN_IN_REQUIRED) {
+        throw new Error('Sign in required');
+      }
     }
+    
+    throw new Error(error.message || 'Google Sign-In failed');
   }
 };
 
