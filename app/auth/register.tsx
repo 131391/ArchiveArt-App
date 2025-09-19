@@ -7,16 +7,16 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Animated,
-  Dimensions,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    Animated,
+    Dimensions,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
@@ -119,7 +119,7 @@ export default function RegisterScreen() {
       setUsernameError('Username can only contain letters, numbers, and underscores');
       return;
     }
-    
+
     // Clear basic errors
     setUsernameError('');
     
@@ -344,7 +344,7 @@ export default function RegisterScreen() {
         // Success case - could be login or registration
         showAlert('success', 'Welcome!', 'You have been successfully authenticated with Google.');
         setTimeout(() => {
-          router.replace('/welcome');
+      router.replace('/welcome');
         }, 1500);
       }
     } catch (error) {

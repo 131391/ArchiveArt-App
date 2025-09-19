@@ -64,8 +64,9 @@
         "origin": false
       },
       "eas": {
-        "projectId": "your-project-id-here"
+        "projectId": "46517ee9-ed66-4591-bb43-9023e7922fcb"
       }
-    }
+    },
+    "owner": "omkar_br"
   }
 }
