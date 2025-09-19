@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "245858141100",
+    "project_id": "archivart-app",
+    "storage_bucket": "archivart-app.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:245858141100:android:your-android-app-id",
+        "android_client_info": {
+          "package_name": "com.archivart.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "245858141100-m7osihh7l439n0967plqq58org8pcl1s.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.archivart.app",
+            "certificate_hash": "your-sha1-fingerprint"
+          }
+        },
+        {
+          "client_id": "245858141100-e7tbpirmi8a3dot5sib3fc7nmlg16vam.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "your-android-api-key"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "245858141100-e7tbpirmi8a3dot5sib3fc7nmlg16vam.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

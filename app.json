@@ -1,0 +1,71 @@
+{
+  "expo": {
+    "name": "ArchivArt",
+    "slug": "archivart-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/ALogo-square.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/images/ALogo-square.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.archivart.app",
+      "icon": "./assets/images/ALogo-square.png",
+      "googleServicesFile": "./google-services-ios.plist",
+      "infoPlist": {
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLName": "Google Sign-In",
+            "CFBundleURLSchemes": [
+              "com.googleusercontent.apps.245858141100-64maf1nnom0omlleevt52cudkepm5vgi"
+            ]
+          }
+        ]
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/ALogo-square.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.archivart.app",
+      "googleServicesFile": "./google-services.json",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/images/ALogo-square.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.245858141100-64maf1nnom0omlleevt52cudkepm5vgi"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "your-project-id-here"
+      }
+    }
+  }
+}
