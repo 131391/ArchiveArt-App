@@ -345,6 +345,7 @@ class AuthService {
     });
     
     console.log('🔐 Registration API response status:', response.status);
+    console.log('🔐 Registration API response ok:', response.ok);
 
     if (!response.ok) {
       let errorMessage = 'Registration failed';
@@ -377,6 +378,12 @@ class AuthService {
       hasAccessToken: !!data.accessToken,
       hasRefreshToken: !!data.refreshToken,
     });
+    
+    // Check if the response contains an error even with 200 status
+    if (data && typeof data === 'object' && 'error' in data) {
+      console.log('🔐 Registration API returned error in response body:', data.error);
+      throw new Error(data.error || 'Registration failed');
+    }
     
     // Store tokens securely
     await this.storeTokens(data.accessToken, data.refreshToken);

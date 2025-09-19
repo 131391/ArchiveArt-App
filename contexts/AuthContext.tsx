@@ -75,10 +75,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const register = async (userData: RegisterData): Promise<Error | null> => {
     try {
       setIsLoading(true);
+      console.log('🔐 AuthContext.register called with:', userData.email);
       const authResponse = await AuthService.register(userData);
+      console.log('🔐 AuthContext.register successful, setting user:', authResponse.user);
       setUser(authResponse.user);
       return null; // Success, no error
     } catch (error) {
+      console.log('🔐 AuthContext.register caught error:', error);
       return error instanceof Error ? error : new Error('An unexpected error occurred during registration.');
     } finally {
       setIsLoading(false);
