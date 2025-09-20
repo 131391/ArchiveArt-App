@@ -200,17 +200,17 @@ export default function MediaPlayerScreen() {
         image: match.scanning_image ? `${API_CONFIG.BASE_URL}/uploads/media/${match.scanning_image}` : "https://images.unsplash.com/photo-1446776877081-d282a0f896e2?w=400&h=300&fit=crop"
       };
     }
-    
-    // Mock data for demonstration
+
+  // Mock data for demonstration
     return {
-      title: "Space Explorer X-5",
-      collection: "Sci-Fi Vehicle Collection",
-      description: "A highly advanced interstellar vehicle designed for deep-space exploration. Features modular systems and a panoramic viewing cockpit.",
-      environment: "Space",
-      estimatedTime: "3 min",
-      rating: "4.8/5",
-      image: "https://images.unsplash.com/photo-1446776877081-d282a0f896e2?w=400&h=300&fit=crop"
-    };
+    title: "Space Explorer X-5",
+    collection: "Sci-Fi Vehicle Collection",
+    description: "A highly advanced interstellar vehicle designed for deep-space exploration. Features modular systems and a panoramic viewing cockpit.",
+    environment: "Space",
+    estimatedTime: "3 min",
+    rating: "4.8/5",
+    image: "https://images.unsplash.com/photo-1446776877081-d282a0f896e2?w=400&h=300&fit=crop"
+  };
   };
 
   const displayData = getDisplayData();
@@ -389,7 +389,7 @@ export default function MediaPlayerScreen() {
               </TouchableOpacity>
             </View>
           </View>
-          
+
           {/* Bottom Info Panel */}
           <View style={[styles.bottomInfo, isLandscape() && styles.bottomInfoLandscape]}>
             <View style={[styles.infoContent, isLandscape() && styles.infoContentLandscape]}>
@@ -402,7 +402,7 @@ export default function MediaPlayerScreen() {
               </View>
             </View>
           </View>
-          
+
           {/* Right Side Actions */}
           <View style={[styles.rightActions, isLandscape() && styles.rightActionsLandscape]}>
             <TouchableOpacity 
@@ -426,21 +426,21 @@ export default function MediaPlayerScreen() {
               <Ionicons name="share-outline" size={isLandscape() ? 24 : 28} color="white" />
               <Text style={[styles.actionText, isLandscape() && styles.actionTextLandscape]}>Share</Text>
             </TouchableOpacity>
-            
+
             <TouchableOpacity style={styles.actionButton}>
               <Ionicons name="bookmark-outline" size={isLandscape() ? 24 : 28} color="white" />
               <Text style={[styles.actionText, isLandscape() && styles.actionTextLandscape]}>Save</Text>
             </TouchableOpacity>
           </View>
-          
+
           {/* Center Play/Pause Button */}
           {!isPlaying && (
             <View style={styles.centerPlayButton}>
               <TouchableOpacity onPress={togglePlayPause}>
                 <Ionicons name="play" size={64} color="white" />
-              </TouchableOpacity>
-            </View>
-          )}
+                  </TouchableOpacity>
+                </View>
+              )}
 
           {/* Debug Info (can be removed in production) */}
           {__DEV__ && videoDimensions.width > 0 && (
@@ -470,8 +470,8 @@ export default function MediaPlayerScreen() {
             <TouchableOpacity style={styles.backToScannerButton} onPress={handleBack}>
               <Text style={styles.backToScannerText}>Back to Scanner</Text>
             </TouchableOpacity>
-          </View>
         </View>
+      </View>
       )}
     </View>
   );
