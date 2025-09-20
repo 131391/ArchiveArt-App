@@ -98,7 +98,7 @@ class AuthService {
     }
 
     // Add authorization header
-    const headers = {
+    const headers: any = {
       ...options.headers,
       'Authorization': `Bearer ${accessToken}`,
     };
@@ -328,11 +328,16 @@ class AuthService {
         user: {
           id: Date.now(),
           name: userData.name,
+          username: userData.username,
           email: userData.email,
+          mobile: userData.mobile,
           role: 'user',
+          is_verified: false,
         },
         accessToken: 'mock_access_token_' + Date.now(),
         refreshToken: 'mock_refresh_token_' + Date.now(),
+        message: 'Registration successful (Mock Mode)',
+        expiresIn: 3600,
       };
       
       await this.storeTokens(mockResponse.accessToken, mockResponse.refreshToken);
@@ -389,7 +394,8 @@ class AuthService {
     // Check if the response contains an error even with 200 status
     if (data && typeof data === 'object' && 'error' in data) {
       console.log('🔐 Registration API returned error in response body:', data.error);
-      throw new Error(data.error || 'Registration failed');
+      const errorMessage = typeof data.error === 'string' ? data.error : 'Registration failed';
+      throw new Error(errorMessage);
     }
     
     // Store tokens securely
@@ -537,7 +543,8 @@ class AuthService {
       // Check if the response contains an error even with 200 status
       if (data && typeof data === 'object' && 'error' in data) {
         console.log('🔐 Google auth API returned error in response body:', data.error);
-        throw new Error(data.error || 'Google authentication failed');
+        const errorMessage = typeof data.error === 'string' ? data.error : 'Google authentication failed';
+        throw new Error(errorMessage);
       }
       
       // Store tokens securely
@@ -659,6 +666,71 @@ class AuthService {
     console.log('🔍 AuthService.getUserProfile - User data from API:', JSON.stringify(data.user, null, 2));
     console.log('🔍 AuthService.getUserProfile - Profile picture field:', data.user.profile_picture);
     console.log('🔍 AuthService.getUserProfile - Profile picture type:', typeof data.user.profile_picture);
+    
+    // Update stored user data
+    await AsyncStorage.setItem('user', JSON.stringify(data.user));
+    
+    return data.user;
+  }
+
+  // Update user profile
+  public async updateUserProfile(profileData: {
+    name?: string;
+    mobile?: string;
+    profile_picture?: string | File;
+  }): Promise<User> {
+    console.log('🔍 AuthService.updateUserProfile called with:', profileData);
+    
+    const formData = new FormData();
+    
+    // Add text fields
+    if (profileData.name) {
+      formData.append('name', profileData.name);
+    }
+    if (profileData.mobile) {
+      formData.append('mobile', profileData.mobile);
+    }
+    
+    // Add profile picture if provided
+    if (profileData.profile_picture) {
+      if (typeof profileData.profile_picture === 'string') {
+        // It's a URI from image picker
+        formData.append('profile_picture', {
+          uri: profileData.profile_picture,
+          type: 'image/jpeg',
+          name: 'profile-picture.jpg',
+        } as any);
+      } else {
+        // It's a File object
+        formData.append('profile_picture', profileData.profile_picture);
+      }
+    }
+    
+    const response = await this.makeAuthenticatedRequest(
+      buildUrl(API_ENDPOINTS.AUTH.UPDATE_PROFILE),
+      {
+        method: 'PUT',
+        body: formData,
+        // Don't set Content-Type header - let the browser set it with boundary for FormData
+      }
+    );
+    
+    console.log('🔍 AuthService.updateUserProfile - Response status:', response.status);
+    
+    if (!response.ok) {
+      let errorMessage = 'Failed to update profile';
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorData.error || errorMessage;
+        console.error('🔍 AuthService.updateUserProfile - Error:', errorData);
+      } catch (parseError) {
+        console.error('🔍 AuthService.updateUserProfile - Parse error:', parseError);
+      }
+      throw new Error(errorMessage);
+    }
+    
+    const data = await response.json();
+    console.log('🔍 AuthService.updateUserProfile - Success:', JSON.stringify(data.user, null, 2));
     
     // Update stored user data
     await AsyncStorage.setItem('user', JSON.stringify(data.user));

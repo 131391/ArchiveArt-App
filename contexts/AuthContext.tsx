@@ -11,6 +11,11 @@ interface AuthContextType {
   googleLogin: (googleData?: GoogleAuthData) => Promise<Error | null>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  updateProfile: (profileData: {
+    name?: string;
+    mobile?: string;
+    profile_picture?: string | File;
+  }) => Promise<Error | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -142,6 +147,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const updateProfile = async (profileData: {
+    name?: string;
+    mobile?: string;
+    profile_picture?: string | File;
+  }): Promise<Error | null> => {
+    try {
+      console.log('🔐 AuthContext.updateProfile called with:', profileData);
+      setIsLoading(true);
+      const updatedUser = await AuthService.updateUserProfile(profileData);
+      setUser(updatedUser);
+      return null; // Success, no error
+    } catch (error) {
+      console.error('🔐 AuthContext.updateProfile error:', error);
+      return error instanceof Error ? error : new Error('An unexpected error occurred during profile update.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const value: AuthContextType = {
     user,
     isLoading,
@@ -151,6 +175,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     googleLogin,
     logout,
     refreshUser,
+    updateProfile,
   };
 
   return (

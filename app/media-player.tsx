@@ -83,6 +83,10 @@ export default function MediaPlayerScreen() {
     console.log('🎬 Media Player - Is Audio:', isAudio);
     console.log('🎬 Media Player - Media Data:', mediaData);
     
+    // Log the extracted display data for debugging
+    const displayData = getDisplayData();
+    console.log('🎬 Display Data:', displayData);
+    
     // Auto-play video when URL is available
     if (url && !isAudio && videoRef.current) {
       console.log('🎬 Auto-playing video:', url);
@@ -216,8 +220,26 @@ export default function MediaPlayerScreen() {
         }
       }
       setIsPlaying(!isPlaying);
+      // Show controls when toggling play/pause
+      showControlsWithDelay();
     } catch (error) {
       console.error('Toggle play/pause error:', error);
+    }
+  };
+
+  const stopMedia = async () => {
+    try {
+      if (isAudio && audioRef.current) {
+        await audioRef.current.stopAsync();
+        await audioRef.current.setPositionAsync(0);
+      } else if (!isAudio && videoRef.current) {
+        await videoRef.current.stopAsync();
+        await videoRef.current.setPositionAsync(0);
+      }
+      setIsPlaying(false);
+      showControlsWithDelay();
+    } catch (error) {
+      console.error('Stop media error:', error);
     }
   };
 
@@ -435,6 +457,13 @@ export default function MediaPlayerScreen() {
               <View style={styles.topRightControls}>
                 <TouchableOpacity 
                   style={styles.controlButton}
+                  onPress={stopMedia}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="stop" size={22} color="white" />
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.controlButton}
                   onPress={() => setIsMuted(!isMuted)}
                   activeOpacity={0.8}
                 >
@@ -558,8 +587,8 @@ export default function MediaPlayerScreen() {
             </View>
           </Animated.View>
 
-          {/* Debug Info (can be removed in production) */}
-          {__DEV__ && videoDimensions.width > 0 && (
+          {/* Debug Info - Enhanced for data debugging */}
+          {__DEV__ && (
             <View style={styles.debugOverlay}>
               <Text style={styles.debugText}>
                 Video: {videoDimensions.width}x{videoDimensions.height}
@@ -572,6 +601,12 @@ export default function MediaPlayerScreen() {
               </Text>
               <Text style={styles.debugText}>
                 Mode: {isLandscape() ? 'Landscape' : 'Portrait'}
+              </Text>
+              <Text style={styles.debugText}>
+                Title: {displayData.title}
+              </Text>
+              <Text style={styles.debugText}>
+                HasData: {mediaData ? 'Yes' : 'No'}
               </Text>
             </View>
           )}

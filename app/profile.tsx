@@ -110,9 +110,20 @@ export default function ProfileScreen() {
             
             <TouchableOpacity
               style={styles.optionItem}
-              onPress={() => router.push('/scanner')}
+              onPress={() => router.push('/profile-update')}
             >
               <View style={[styles.optionIcon, { backgroundColor: '#3B82F6' }]}>
+                <Ionicons name="person-outline" size={20} color="#FFFFFF" />
+              </View>
+              <Text style={styles.optionTitle}>Edit Profile</Text>
+              <Ionicons name="chevron-forward" size={20} color="#64748B" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.optionItem}
+              onPress={() => router.push('/scanner')}
+            >
+              <View style={[styles.optionIcon, { backgroundColor: '#8B5CF6' }]}>
                 <Ionicons name="settings" size={20} color="#FFFFFF" />
               </View>
               <Text style={styles.optionTitle}>App Settings</Text>
