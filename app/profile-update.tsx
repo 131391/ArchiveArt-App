@@ -47,9 +47,21 @@ export default function ProfileUpdateScreen() {
     if (user) {
       setName(user.name || '');
       // Remove +91 prefix if present, keep only 10 digits
-      const mobileNumber = user.mobile ? user.mobile.replace(/^\+91/, '').replace(/^\+/, '') : '';
+      let mobileNumber = '';
+      if (user.mobile) {
+        // Remove any prefix (+91, +1, etc.) and keep only digits
+        mobileNumber = user.mobile.replace(/^\+[0-9]+/, '').replace(/\D/g, '');
+        // Ensure we only have 10 digits
+        mobileNumber = mobileNumber.slice(0, 10);
+      }
       setMobile(mobileNumber);
       setProfilePicture(user.profile_picture || null);
+      console.log('🔍 Profile update - User data:', {
+        name: user.name,
+        mobile: user.mobile,
+        processedMobile: mobileNumber,
+        profile_picture: user.profile_picture
+      });
     }
   }, [user]);
 
@@ -205,7 +217,13 @@ export default function ProfileUpdateScreen() {
     if (user) {
       setName(user.name || '');
       // Remove +91 prefix if present, keep only 10 digits
-      const mobileNumber = user.mobile ? user.mobile.replace(/^\+91/, '').replace(/^\+/, '') : '';
+      let mobileNumber = '';
+      if (user.mobile) {
+        // Remove any prefix (+91, +1, etc.) and keep only digits
+        mobileNumber = user.mobile.replace(/^\+[0-9]+/, '').replace(/\D/g, '');
+        // Ensure we only have 10 digits
+        mobileNumber = mobileNumber.slice(0, 10);
+      }
       setMobile(mobileNumber);
       setProfilePicture(user.profile_picture || null);
     }
@@ -315,9 +333,9 @@ export default function ProfileUpdateScreen() {
             placeholder="Phone Number"
             value={mobile}
             onChangeText={handleMobileChange}
-            error={mobileError}
             keyboardType="phone-pad"
-            maxLength={10}
+            prefix="+91"
+            error={mobileError}
           />
         </View>
 
