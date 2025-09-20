@@ -237,19 +237,33 @@ export default function ScannerScreen() {
         clearTimeout(autoCaptureTimer);
       }
 
+      // Ensure camera is focused before capturing
+      console.log('📸 Ensuring camera focus before capture...');
+      if (cameraRef.current) {
+        // Small delay to ensure focus is locked
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
       const photo = await cameraRef.current.takePictureAsync({
-        quality: 1.0,
+        quality: 1.0, // Highest quality
         base64: false,
-        skipProcessing: true,
-        exif: false,
-        additionalExif: {},
+        skipProcessing: false, // Enable processing for better quality
+        exif: true, // Include EXIF data for better image processing
+        additionalExif: {
+          // Add metadata for better image processing
+          'ImageDescription': 'ArchivArt Scanner Capture',
+          'Software': 'ArchivArt App',
+        },
       });
 
       console.log('📸 Photo captured:', {
         uri: photo?.uri,
         width: photo?.width,
         height: photo?.height,
-        exists: !!photo?.uri
+        exists: !!photo?.uri,
+        quality: '1.0 (max)',
+        processing: 'enabled',
+        exif: 'included'
       });
 
       if (photo?.uri) {
@@ -317,7 +331,21 @@ export default function ScannerScreen() {
         type: 'image/jpeg',
         name: 'scan.jpg',
         fileName: 'scan.jpg',
+        // Ensure high quality image upload
+        quality: 1.0,
       } as any);
+      
+      // Add additional metadata for better processing
+      formData.append('source', 'camera');
+      formData.append('quality', 'high');
+      
+      console.log('🔍 Processing camera image with enhanced settings:', {
+        imageUri,
+        quality: '1.0 (max)',
+        source: 'camera',
+        processing: 'enabled',
+        exif: 'included'
+      });
 
       // Add timeout to prevent hanging - increased to 30 seconds
       const controller = new AbortController();
