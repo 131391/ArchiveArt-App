@@ -127,15 +127,9 @@ export default function ScannerScreen() {
     };
   }, [scanLineAnim, cornerPulseAnim, focusDotAnim, gridOpacityAnim]);
 
-  // Handle back button and reset scanner when screen comes into focus
+  // Handle back button - no automatic reset
   useFocusEffect(
     useCallback(() => {
-      // Reset scanner state when screen comes into focus (e.g., when navigating back from media player)
-      if (isProcessing || showWarning || progress > 0) {
-        console.log('🔄 Resetting scanner state on focus');
-        resetToFreshScanner();
-      }
-
       const onBackPress = () => {
         if (isProcessing) {
           return true; // Prevent back navigation during processing
@@ -145,7 +139,7 @@ export default function ScannerScreen() {
 
       const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
       return () => subscription.remove();
-    }, [isProcessing, showWarning, progress])
+    }, [isProcessing])
   );
 
   // Camera initialization
@@ -158,38 +152,11 @@ export default function ScannerScreen() {
     }
   }, [permission]);
 
-  // Auto-capture logic with countdown
+  // Manual capture only - no auto-capture
   useEffect(() => {
     if (isScanning && !hasAutoCaptured && !isProcessing && isReady) {
-      // Start countdown from 5 seconds for better focus
-      setCountdown(5);
-      
-      // Countdown timer
-      const countdownInterval = setInterval(() => {
-        setCountdown(prev => {
-          if (prev <= 1) {
-            clearInterval(countdownInterval);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-      
-      // Auto-capture timer
-      const timer = setTimeout(() => {
-        if (isScanning && !hasAutoCaptured && !isProcessing && isReady) {
-          console.log('📸 Auto-capturing image...');
-          handleCapture();
-        }
-        clearInterval(countdownInterval);
-      }, 5000); // Auto-capture after 5 seconds for better focus
-      
-      setAutoCaptureTimer(timer);
-      
-      return () => {
-        clearTimeout(timer);
-        clearInterval(countdownInterval);
-      };
+      console.log('📸 Scanner ready for manual capture...');
+      setCountdown(0); // No countdown, just ready state
     } else {
       setCountdown(0);
     }
@@ -429,9 +396,8 @@ export default function ScannerScreen() {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.8,
+        allowsEditing: false, // Remove cropping - full screen capture
+        quality: 1.0, // Highest quality
       });
 
       if (!result.canceled && result.assets[0]) {
@@ -456,10 +422,8 @@ export default function ScannerScreen() {
     setShowWarning(false);
     setErrorMessage('');
     
-    // Restart scanning after a short delay
-    setTimeout(() => {
-      setIsScanning(true);
-    }, 1000);
+    // Don't automatically restart - wait for user to manually start scanning
+    console.log('🔄 Scanner reset - ready for manual restart');
   };
 
   const resetToFreshScanner = () => {
@@ -474,11 +438,8 @@ export default function ScannerScreen() {
     setErrorMessage('');
     setIsReady(false);
     
-    // Restart everything fresh
-    setTimeout(() => {
-      setIsReady(true);
-      setIsScanning(true);
-    }, 500);
+    // Don't automatically restart - wait for user to manually start scanning
+    console.log('🔄 Fresh scanner ready - waiting for manual start');
   };
 
   if (!permission) {
@@ -557,7 +518,16 @@ export default function ScannerScreen() {
             </View>
 
             {/* Professional Scanner Overlay */}
-            <View style={styles.scanningArea}>
+            <TouchableOpacity 
+              style={styles.scanningArea}
+              onPress={() => {
+                if (!isScanning && isReady && !isProcessing) {
+                  console.log('📸 Starting scanning manually...');
+                  setIsScanning(true);
+                }
+              }}
+              activeOpacity={0.8}
+            >
               {/* Dark Overlay with Cutout */}
               <View style={styles.darkOverlay}>
                 <View style={styles.cutoutArea} />
@@ -612,10 +582,10 @@ export default function ScannerScreen() {
               <View style={styles.statusIndicator}>
                 <View style={[styles.statusDot, { backgroundColor: isReady ? '#10B981' : '#F59E0B' }]} />
                 <Text style={styles.statusText}>
-                  {isReady ? 'Ready to Scan' : 'Focusing...'}
+                  {isReady ? (isScanning ? 'Ready to Scan' : 'Tap to Start Scanning') : 'Focusing...'}
                 </Text>
               </View>
-            </View>
+            </TouchableOpacity>
 
             {/* Bottom Controls */}
             <View style={styles.bottomControls}>
