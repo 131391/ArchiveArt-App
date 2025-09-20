@@ -10,7 +10,8 @@ export interface User {
   mobile?: string;
   role: string;
   is_verified: boolean;
-  profilePicture?: string; // Optional profile picture URL
+  profile_picture?: string; // Optional profile picture URL from API
+  created_at?: string; // Optional creation date from API
 }
 
 export interface AuthResponse {
@@ -303,6 +304,10 @@ class AuthService {
     await this.storeTokens(data.accessToken, data.refreshToken);
     
     // Store user data
+    console.log('🔍 AuthService.login - User data from API:', JSON.stringify(data.user, null, 2));
+    console.log('🔍 AuthService.login - Profile picture field:', data.user.profile_picture);
+    console.log('🔍 AuthService.login - Profile picture type:', typeof data.user.profile_picture);
+    
     await AsyncStorage.setItem('user', JSON.stringify(data.user));
     
     return data;
@@ -650,6 +655,10 @@ class AuthService {
     }
     
     const data = await response.json();
+    
+    console.log('🔍 AuthService.getUserProfile - User data from API:', JSON.stringify(data.user, null, 2));
+    console.log('🔍 AuthService.getUserProfile - Profile picture field:', data.user.profile_picture);
+    console.log('🔍 AuthService.getUserProfile - Profile picture type:', typeof data.user.profile_picture);
     
     // Update stored user data
     await AsyncStorage.setItem('user', JSON.stringify(data.user));

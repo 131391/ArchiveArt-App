@@ -45,7 +45,7 @@ export const API_CONFIG = {
   // BASE_URL: 'http://172.20.10.5:3000', // For emulator testing
   // BASE_URL: 'http://localhost:3000', // For local development
   // Enable mock mode for development when backend is not available
-  MOCK_MODE: false, // Enable mock mode for testing
+  MOCK_MODE: true, // Enable mock mode for testing
 };
 
 // API Endpoints organized by category

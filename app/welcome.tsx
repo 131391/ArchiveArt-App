@@ -1,33 +1,19 @@
 import { useAuth } from '@/contexts/AuthContext';
+import { getAvatarProps, getInitialsBackgroundColor } from '@/utils/avatarUtils';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Dimensions, Image, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 
 export default function WelcomeScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const { isAuthenticated, isLoading, user } = useAuth();
+  const [imageLoadError, setImageLoadError] = useState(false);
 
-  // Function to generate user initials
-  const getUserInitials = (name: string): string => {
-    if (!name) return 'U';
-    
-    const nameParts = name.trim().split(' ');
-    if (nameParts.length === 1) {
-      return nameParts[0].charAt(0).toUpperCase();
-    }
-    
-    const firstName = nameParts[0];
-    const lastName = nameParts[nameParts.length - 1];
-    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
-  };
-
-  // Function to get user's profile picture or null
-  const getUserProfilePicture = (): string | null => {
-    return user?.profilePicture || null;
-  };
+  // Get avatar props using utility function
+  const avatarProps = user ? getAvatarProps(user) : null;
 
   // No automatic redirect - show profile when authenticated, login when not
   useEffect(() => {
@@ -57,22 +43,25 @@ export default function WelcomeScreen() {
         {/* Hero Section */}
         <View style={styles.heroSection}>
           {/* Profile Image for Authenticated Users */}
-          {isAuthenticated && (
+          {isAuthenticated && avatarProps && (
             <View style={styles.profileImageContainer}>
               <View style={styles.profileImageWrapper}>
-                {getUserProfilePicture() ? (
+                {avatarProps.hasProfilePicture && !imageLoadError ? (
                   <Image 
-                    source={{ uri: getUserProfilePicture()! }}
+                    source={{ uri: avatarProps.profilePictureUrl! }}
                     style={styles.profileImage}
                     onError={() => {
-                      // If image fails to load, we could set a state to show initials instead
                       console.log('Profile image failed to load, showing initials');
+                      setImageLoadError(true);
                     }}
                   />
                 ) : (
-                  <View style={styles.profileInitialsContainer}>
+                  <View style={[
+                    styles.profileInitialsContainer,
+                    { backgroundColor: getInitialsBackgroundColor(user?.id || 0) }
+                  ]}>
                     <Text style={styles.profileInitials}>
-                      {getUserInitials(user?.name || 'User')}
+                      {avatarProps.initials}
                     </Text>
                   </View>
                 )}

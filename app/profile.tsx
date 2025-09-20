@@ -1,16 +1,21 @@
 import { WarningModal } from '@/components/ui/WarningModal';
 import { useAuth } from '@/contexts/AuthContext';
+import { getAvatarProps, getInitialsBackgroundColor } from '@/utils/avatarUtils';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Dimensions, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [imageLoadError, setImageLoadError] = useState(false);
+
+  // Get avatar props using utility function
+  const avatarProps = user ? getAvatarProps(user) : null;
 
   const handleLogout = () => {
     setShowLogoutModal(true);
@@ -41,21 +46,34 @@ export default function ProfileScreen() {
           {/* Profile Header */}
           <View style={styles.profileHeader}>
             <View style={styles.avatarContainer}>
-              <LinearGradient
-                colors={['#3B82F6', '#8B5CF6']}
-                style={styles.avatarGradient}
-              >
-                <Ionicons name="person" size={40} color="#FFFFFF" />
-              </LinearGradient>
+              {avatarProps?.hasProfilePicture && !imageLoadError ? (
+                <Image 
+                  source={{ uri: avatarProps.profilePictureUrl! }}
+                  style={styles.profileImage}
+                  onError={() => {
+                    console.log('Profile image failed to load, showing initials');
+                    setImageLoadError(true);
+                  }}
+                />
+              ) : (
+                <View style={[
+                  styles.avatarGradient,
+                  { backgroundColor: getInitialsBackgroundColor(user?.id || 0) }
+                ]}>
+                  <Text style={styles.avatarInitials}>
+                    {avatarProps?.initials || 'U'}
+                  </Text>
+                </View>
+              )}
               <View style={styles.verifiedBadge}>
                 <Ionicons name="checkmark" size={12} color="#FFFFFF" />
               </View>
             </View>
             <Text style={styles.userName}>
-              {user?.name || 'Alex Chen'}
+              {user?.name || 'User'}
             </Text>
             <Text style={styles.userEmail}>
-              {user?.email || 'alex.chen@example.com'}
+              {user?.email || 'user@example.com'}
             </Text>
           </View>
 
@@ -171,6 +189,17 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  profileImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 20,
+  },
+  avatarInitials: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    textAlign: 'center',
   },
   verifiedBadge: {
     position: 'absolute',

@@ -1,10 +1,11 @@
 import { API_CONFIG } from '@/constants/Api';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio, Video } from 'expo-av';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Dimensions, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, Dimensions, Pressable, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
 
@@ -16,13 +17,18 @@ export default function MediaPlayerScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
-  const [showControls, setShowControls] = useState(false);
+  const [showControls, setShowControls] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
   const [orientation, setOrientation] = useState(ScreenOrientation.Orientation.PORTRAIT_UP);
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
   const [isLandscapeMode, setIsLandscapeMode] = useState(false);
   const [videoDimensions, setVideoDimensions] = useState({ width: 0, height: 0 });
   const [videoAspectRatio, setVideoAspectRatio] = useState(16/9);
+  
+  // Auto-hide controls
+  const controlsOpacity = useRef(new Animated.Value(1)).current;
+  const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
   const params = useLocalSearchParams<{ 
     url?: string; 
     type?: string; 
@@ -45,6 +51,31 @@ export default function MediaPlayerScreen() {
   const bar4Anim = useRef(new Animated.Value(0.6)).current;
   const bar5Anim = useRef(new Animated.Value(0.3)).current;
 
+  // Auto-hide controls function
+  const hideControlsAfterDelay = () => {
+    if (controlsTimeoutRef.current) {
+      clearTimeout(controlsTimeoutRef.current);
+    }
+    controlsTimeoutRef.current = setTimeout(() => {
+      Animated.timing(controlsOpacity, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+      setShowControls(false);
+    }, 4000);
+  };
+
+  const showControlsWithDelay = () => {
+    setShowControls(true);
+    Animated.timing(controlsOpacity, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+    hideControlsAfterDelay();
+  };
+
   useEffect(() => {
     console.log('🎬 Media Player - Received params:', params);
     console.log('🎬 Media Player - URL:', url);
@@ -66,6 +97,15 @@ export default function MediaPlayerScreen() {
         setIsPlaying(false);
       });
     }
+
+    // Start auto-hide timer
+    hideControlsAfterDelay();
+
+    return () => {
+      if (controlsTimeoutRef.current) {
+        clearTimeout(controlsTimeoutRef.current);
+      }
+    };
   }, [params, url, type, isAudio, mediaData]);
 
   useEffect(() => {
@@ -201,16 +241,16 @@ export default function MediaPlayerScreen() {
       };
     }
 
-  // Mock data for demonstration
+    // Mock data for demonstration
     return {
-    title: "Space Explorer X-5",
-    collection: "Sci-Fi Vehicle Collection",
-    description: "A highly advanced interstellar vehicle designed for deep-space exploration. Features modular systems and a panoramic viewing cockpit.",
-    environment: "Space",
-    estimatedTime: "3 min",
-    rating: "4.8/5",
-    image: "https://images.unsplash.com/photo-1446776877081-d282a0f896e2?w=400&h=300&fit=crop"
-  };
+      title: "Space Explorer X-5",
+      collection: "Sci-Fi Vehicle Collection",
+      description: "A highly advanced interstellar vehicle designed for deep-space exploration. Features modular systems and a panoramic viewing cockpit.",
+      environment: "Space",
+      estimatedTime: "3 min",
+      rating: "4.8/5",
+      image: "https://images.unsplash.com/photo-1446776877081-d282a0f896e2?w=400&h=300&fit=crop"
+    };
   };
 
   const displayData = getDisplayData();
@@ -285,7 +325,7 @@ export default function MediaPlayerScreen() {
       
       {/* Full Screen Video Player */}
       {url && !isAudio ? (
-        <View style={[styles.videoContainer, { justifyContent: 'center', alignItems: 'center' }]}>
+        <View style={styles.videoContainer}>
           <Video
             ref={videoRef}
             source={{ uri: url }}
@@ -333,114 +373,190 @@ export default function MediaPlayerScreen() {
             }}
           />
           
+          {/* Tap Area for Controls */}
+          <Pressable 
+            style={styles.tapArea}
+            onPress={showControlsWithDelay}
+            activeOpacity={1}
+          />
+          
           {/* Loading Overlay */}
           {isLoading && (
             <View style={styles.loadingOverlay}>
-              <Ionicons name="hourglass" size={48} color="white" />
-              <Text style={styles.loadingText}>Loading...</Text>
+              <View style={styles.loadingContent}>
+                <Ionicons name="hourglass" size={48} color="white" />
+                <Text style={styles.loadingText}>Loading...</Text>
+              </View>
             </View>
           )}
           
           {/* Error Overlay */}
           {hasError && (
             <View style={styles.errorOverlay}>
-              <Ionicons name="alert-circle" size={48} color="#EF4444" />
-              <Text style={styles.errorText}>Failed to load video</Text>
-              <TouchableOpacity 
-                style={styles.retryButton}
-                onPress={() => {
-                  setHasError(false);
-                  setIsLoading(true);
-                  if (videoRef.current) {
-                    videoRef.current.loadAsync({ uri: url });
-                  }
-                }}
-              >
-                <Text style={styles.retryButtonText}>Retry</Text>
-              </TouchableOpacity>
+              <View style={styles.errorContent}>
+                <Ionicons name="alert-circle" size={48} color="#FF6B6B" />
+                <Text style={styles.errorText}>Unable to load video</Text>
+                <Text style={styles.errorSubtext}>Please check your connection and try again</Text>
+                <TouchableOpacity 
+                  style={styles.retryButton}
+                  onPress={() => {
+                    setHasError(false);
+                    setIsLoading(true);
+                    if (videoRef.current) {
+                      videoRef.current.loadAsync({ uri: url });
+                    }
+                  }}
+                >
+                  <Text style={styles.retryButtonText}>Retry</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           )}
           
-          {/* Tap to Play/Pause */}
-          <TouchableOpacity 
-            style={styles.tapArea}
-            onPress={() => {
-              setShowControls(!showControls);
-              setTimeout(() => setShowControls(false), 3000);
-            }}
-            activeOpacity={1}
-          />
-          
-          {/* Top Controls */}
-          <View style={[styles.topControls, isLandscape() && styles.topControlsLandscape]}>
-            <TouchableOpacity 
-              style={styles.backButton}
-              onPress={handleBack}
-            >
-              <Ionicons name="arrow-back" size={24} color="white" />
-            </TouchableOpacity>
-            
-            <View style={styles.topRightControls}>
+          {/* Top Controls - Animated */}
+          <Animated.View style={[
+            styles.topControls, 
+            isLandscape() && styles.topControlsLandscape,
+            { opacity: controlsOpacity }
+          ]}>
+            <LinearGradient
+              colors={['rgba(0,0,0,0.8)', 'rgba(0,0,0,0.4)', 'transparent']}
+              style={styles.gradientOverlay}
+            />
+            <View style={styles.topControlsContent}>
               <TouchableOpacity 
-                style={styles.controlButton}
-                onPress={() => setIsMuted(!isMuted)}
+                style={styles.backButton}
+                onPress={handleBack}
+                activeOpacity={0.8}
               >
-                <Ionicons name={isMuted ? "volume-mute" : "volume-high"} size={24} color="white" />
+                <Ionicons name="chevron-back" size={28} color="white" />
               </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Bottom Info Panel */}
-          <View style={[styles.bottomInfo, isLandscape() && styles.bottomInfoLandscape]}>
-            <View style={[styles.infoContent, isLandscape() && styles.infoContentLandscape]}>
-              <Text style={[styles.reelsTitle, isLandscape() && styles.reelsTitleLandscape]}>{displayData.title}</Text>
-              <Text style={[styles.reelsDescription, isLandscape() && styles.reelsDescriptionLandscape]}>{displayData.description}</Text>
-              <View style={styles.reelsMeta}>
-                <Text style={styles.reelsMetaText}>Similarity: {displayData.rating}</Text>
-                <Text style={styles.reelsMetaText}>•</Text>
-                <Text style={styles.reelsMetaText}>{displayData.environment}</Text>
+              
+              <View style={styles.topRightControls}>
+                <TouchableOpacity 
+                  style={styles.controlButton}
+                  onPress={() => setIsMuted(!isMuted)}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name={isMuted ? "volume-mute" : "volume-high"} size={24} color="white" />
+                </TouchableOpacity>
               </View>
             </View>
-          </View>
+          </Animated.View>
 
-          {/* Right Side Actions */}
-          <View style={[styles.rightActions, isLandscape() && styles.rightActionsLandscape]}>
-            <TouchableOpacity 
-              style={styles.actionButton}
-              onPress={() => setIsLiked(!isLiked)}
-            >
-              <Ionicons 
-                name={isLiked ? "heart" : "heart-outline"} 
-                size={isLandscape() ? 28 : 32} 
-                color={isLiked ? "#FF3040" : "white"} 
-              />
-              <Text style={[styles.actionText, isLandscape() && styles.actionTextLandscape]}>Like</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.actionButton}>
-              <Ionicons name="chatbubble-outline" size={isLandscape() ? 24 : 28} color="white" />
-              <Text style={[styles.actionText, isLandscape() && styles.actionTextLandscape]}>Comment</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.actionButton}>
-              <Ionicons name="share-outline" size={isLandscape() ? 24 : 28} color="white" />
-              <Text style={[styles.actionText, isLandscape() && styles.actionTextLandscape]}>Share</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.actionButton}>
-              <Ionicons name="bookmark-outline" size={isLandscape() ? 24 : 28} color="white" />
-              <Text style={[styles.actionText, isLandscape() && styles.actionTextLandscape]}>Save</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Center Play/Pause Button */}
+          {/* Center Play/Pause Button - Only when paused */}
           {!isPlaying && (
-            <View style={styles.centerPlayButton}>
-              <TouchableOpacity onPress={togglePlayPause}>
-                <Ionicons name="play" size={64} color="white" />
-                  </TouchableOpacity>
+            <Animated.View style={[styles.centerPlayButton, { opacity: controlsOpacity }]}>
+              <TouchableOpacity 
+                style={styles.playButtonContainer}
+                onPress={togglePlayPause}
+                activeOpacity={0.9}
+              >
+                <LinearGradient
+                  colors={['rgba(255,255,255,0.2)', 'rgba(255,255,255,0.1)']}
+                  style={styles.playButtonGradient}
+                >
+                  <Ionicons name="play" size={32} color="white" />
+                </LinearGradient>
+              </TouchableOpacity>
+            </Animated.View>
+          )}
+
+          {/* Bottom Content - Title, Description & Actions */}
+          <Animated.View style={[
+            styles.bottomContainer, 
+            isLandscape() && styles.bottomContainerLandscape,
+            { opacity: controlsOpacity }
+          ]}>
+            <LinearGradient
+              colors={['transparent', 'rgba(0,0,0,0.4)', 'rgba(0,0,0,0.8)']}
+              style={styles.bottomGradient}
+            />
+            
+            <View style={styles.bottomContent}>
+              {/* Title and Description */}
+              <View style={[styles.contentInfo, isLandscape() && styles.contentInfoLandscape]}>
+                <Text style={[styles.reelsTitle, isLandscape() && styles.reelsTitleLandscape]} numberOfLines={2}>
+                  {displayData.title}
+                </Text>
+                <Text style={[styles.reelsDescription, isLandscape() && styles.reelsDescriptionLandscape]} numberOfLines={3}>
+                  {displayData.description}
+                </Text>
+                <View style={styles.reelsMeta}>
+                  <View style={styles.metaItem}>
+                    <Ionicons name="star" size={12} color="#FFD700" />
+                    <Text style={styles.reelsMetaText}>{displayData.rating}</Text>
+                  </View>
+                  <View style={styles.metaDivider} />
+                  <View style={styles.metaItem}>
+                    <Ionicons name="location" size={12} color="rgba(255,255,255,0.6)" />
+                    <Text style={styles.reelsMetaText}>{displayData.environment}</Text>
+                  </View>
+                  <View style={styles.metaDivider} />
+                  <View style={styles.metaItem}>
+                    <Ionicons name="time" size={12} color="rgba(255,255,255,0.6)" />
+                    <Text style={styles.reelsMetaText}>{displayData.estimatedTime}</Text>
+                  </View>
                 </View>
-              )}
+              </View>
+
+              {/* Right Side Actions */}
+              <View style={[styles.rightActions, isLandscape() && styles.rightActionsLandscape]}>
+                <TouchableOpacity 
+                  style={styles.actionButton}
+                  onPress={() => setIsLiked(!isLiked)}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.actionIcon, isLiked && styles.actionIconLiked]}>
+                    <Ionicons 
+                      name={isLiked ? "heart" : "heart-outline"} 
+                      size={isLandscape() ? 20 : 24} 
+                      color={isLiked ? "#FF6B6B" : "white"} 
+                    />
+                  </View>
+                  <Text style={[styles.actionText, isLandscape() && styles.actionTextLandscape]}>
+                    {isLiked ? 'Liked' : 'Like'}
+                  </Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={styles.actionButton}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.actionIcon}>
+                    <Ionicons name="chatbubble-outline" size={isLandscape() ? 18 : 22} color="white" />
+                  </View>
+                  <Text style={[styles.actionText, isLandscape() && styles.actionTextLandscape]}>
+                    Comment
+                  </Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={styles.actionButton}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.actionIcon}>
+                    <Ionicons name="share-outline" size={isLandscape() ? 18 : 22} color="white" />
+                  </View>
+                  <Text style={[styles.actionText, isLandscape() && styles.actionTextLandscape]}>
+                    Share
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={styles.actionButton}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.actionIcon}>
+                    <Ionicons name="bookmark-outline" size={isLandscape() ? 18 : 22} color="white" />
+                  </View>
+                  <Text style={[styles.actionText, isLandscape() && styles.actionTextLandscape]}>
+                    Save
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Animated.View>
 
           {/* Debug Info (can be removed in production) */}
           {__DEV__ && videoDimensions.width > 0 && (
@@ -463,15 +579,35 @@ export default function MediaPlayerScreen() {
       ) : (
         /* Fallback for Audio or No Media */
         <View style={styles.fallbackContainer}>
-          <View style={styles.fallbackContent}>
-            <Ionicons name="musical-notes" size={64} color="#8B5CF6" />
-            <Text style={styles.fallbackTitle}>Audio Content</Text>
-            <Text style={styles.fallbackSubtitle}>Audio playback not available in reels mode</Text>
-            <TouchableOpacity style={styles.backToScannerButton} onPress={handleBack}>
-              <Text style={styles.backToScannerText}>Back to Scanner</Text>
-            </TouchableOpacity>
+          <LinearGradient
+            colors={['#1a1a2e', '#16213e', '#0f3460']}
+            style={styles.fallbackGradient}
+          >
+            <View style={styles.fallbackContent}>
+              <View style={styles.audioIcon}>
+                <Ionicons name="musical-notes" size={64} color="#8B5CF6" />
+              </View>
+              <Text style={styles.fallbackTitle}>Audio Content</Text>
+              <Text style={styles.fallbackSubtitle}>
+                Audio playback is not available in this view.{'\n'}
+                Please use the standard media player for audio content.
+              </Text>
+              <TouchableOpacity 
+                style={styles.backToScannerButton} 
+                onPress={handleBack}
+                activeOpacity={0.9}
+              >
+                <LinearGradient
+                  colors={['#8B5CF6', '#7C3AED']}
+                  style={styles.buttonGradient}
+                >
+                  <Ionicons name="scan" size={20} color="white" style={{ marginRight: 8 }} />
+                  <Text style={styles.backToScannerText}>Back to Scanner</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </LinearGradient>
         </View>
-      </View>
       )}
     </View>
   );
@@ -482,222 +618,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000000',
   },
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
-  },
-  mainContent: {
-    flex: 1,
-  },
-  mediaContainer: {
-    marginBottom: 20,
-  },
-  mediaImage: {
-    width: '100%',
-    height: 200,
-    borderRadius: 16,
-    backgroundColor: '#F3F4F6',
-  },
-  detailsContainer: {
-    marginBottom: 24,
-  },
-  detailsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  detailItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  detailText: {
-    fontSize: 12,
-    color: '#64748B',
-    fontWeight: '500',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1E293B',
-    marginBottom: 4,
-  },
-  collection: {
-    fontSize: 14,
-    color: '#64748B',
-    fontWeight: '500',
-    marginBottom: 16,
-  },
-  descriptionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1E293B',
-    marginBottom: 8,
-  },
-  description: {
-    fontSize: 14,
-    color: '#64748B',
-    lineHeight: 20,
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 20,
-  },
-  favoriteButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#8B5CF6',
-    borderRadius: 12,
-    paddingVertical: 12,
-    gap: 8,
-  },
-  favoriteButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#8B5CF6',
-  },
-  arButton: {
-    flex: 1,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  arButtonGradient: {
-    paddingVertical: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  arButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  playerContainer: {
-    marginTop: 20,
-  },
-  audioPlayer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F3F4F6',
-    borderRadius: 12,
-    padding: 16,
-    gap: 16,
-  },
-  audioVisualizer: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'end',
-    height: 40,
-    gap: 4,
-  },
-  audioBar: {
-    flex: 1,
-    backgroundColor: '#3B82F6',
-    borderRadius: 2,
-    minHeight: 10,
-  },
-  videoPlayer: {
-    position: 'relative',
-    backgroundColor: '#000000',
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  video: {
-    width: '100%',
-    height: 200,
-  },
-  playButton: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    marginTop: -25,
-    marginLeft: -25,
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  noMediaContainer: {
-    alignItems: 'center',
-    padding: 30,
-    backgroundColor: 'rgba(139, 92, 246, 0.1)',
-    borderRadius: 15,
-    marginTop: 20,
-  },
-  noMediaText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#8B5CF6',
-    marginTop: 16,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  noMediaSubtext: {
-    fontSize: 14,
-    color: '#64748B',
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  loadingOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  loadingText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-    marginTop: 12,
-  },
-  errorOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  errorText: {
-    color: '#EF4444',
-    fontSize: 16,
-    fontWeight: '600',
-    marginTop: 12,
-  },
-  retryButton: {
-    marginTop: 16,
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    backgroundColor: '#8B5CF6',
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: '600',
-  },
   videoContainer: {
     flex: 1,
     position: 'relative',
-  },
-  fullScreenVideo: {
-    width: width,
-    height: height,
-    backgroundColor: '#000000',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   tapArea: {
     position: 'absolute',
@@ -707,120 +632,261 @@ const styles = StyleSheet.create({
     bottom: 0,
     zIndex: 1,
   },
-  topControls: {
+  loadingOverlay: {
     position: 'absolute',
-    top: 50,
+    top: 0,
     left: 0,
     right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  loadingContent: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    padding: 24,
+    borderRadius: 16,
+    backdropFilter: 'blur(10px)',
+  },
+  loadingText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+    marginTop: 12,
+    opacity: 0.9,
+  },
+  errorOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  errorContent: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    padding: 32,
+    borderRadius: 20,
+    margin: 20,
+    backdropFilter: 'blur(10px)',
+  },
+  errorText: {
+    color: '#FF6B6B',
+    fontSize: 18,
+    fontWeight: '700',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  errorSubtext: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 14,
+    marginTop: 8,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  retryButton: {
+    marginTop: 20,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  retryButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: '#8B5CF6',
+    borderRadius: 12,
+  },
+  topControls: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 120,
+    zIndex: 10,
+  },
+  gradientOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '100%',
+  },
+  topControlsContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    zIndex: 10,
+    paddingTop: 50,
+    height: '100%',
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     alignItems: 'center',
     justifyContent: 'center',
+    backdropFilter: 'blur(10px)',
   },
   topRightControls: {
     flexDirection: 'row',
     gap: 12,
   },
   controlButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     alignItems: 'center',
     justifyContent: 'center',
+    backdropFilter: 'blur(10px)',
   },
-  bottomInfo: {
+  centerPlayButton: {
     position: 'absolute',
-    bottom: 100,
-    left: 0,
-    right: 80,
-    paddingHorizontal: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
     zIndex: 10,
   },
-  infoContent: {
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    borderRadius: 12,
-    padding: 16,
+  playButtonContainer: {
+    borderRadius: 40,
+    overflow: 'hidden',
+  },
+  playButtonGradient: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    backdropFilter: 'blur(10px)',
+  },
+  bottomContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 200,
+    zIndex: 10,
+  },
+  bottomGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '100%',
+  },
+  bottomContent: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+    height: '100%',
+  },
+  contentInfo: {
+    flex: 1,
+    marginRight: 20,
   },
   reelsTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 22,
+    fontWeight: '800',
     color: 'white',
     marginBottom: 8,
+    textShadow: '0px 1px 3px rgba(0,0,0,0.8)',
   },
   reelsDescription: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
-    lineHeight: 20,
-    marginBottom: 8,
+    fontSize: 15,
+    color: 'rgba(255, 255, 255, 0.85)',
+    lineHeight: 22,
+    marginBottom: 12,
+    textShadow: '0px 1px 2px rgba(0,0,0,0.6)',
   },
   reelsMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    flexWrap: 'wrap',
+  },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  metaDivider: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    marginHorizontal: 8,
   },
   reelsMetaText: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.6)',
-    fontWeight: '500',
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontWeight: '600',
   },
   rightActions: {
-    position: 'absolute',
-    right: 20,
-    bottom: 120,
     alignItems: 'center',
-    gap: 24,
-    zIndex: 10,
+    gap: 20,
   },
   actionButton: {
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
+  },
+  actionIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backdropFilter: 'blur(10px)',
+  },
+  actionIconLiked: {
+    backgroundColor: 'rgba(255, 107, 107, 0.2)',
   },
   actionText: {
     fontSize: 12,
     color: 'white',
     fontWeight: '600',
     textAlign: 'center',
-  },
-  centerPlayButton: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    marginTop: -32,
-    marginLeft: -32,
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 10,
+    textShadow: '0px 1px 2px rgba(0,0,0,0.6)',
   },
   fallbackContainer: {
     flex: 1,
-    backgroundColor: '#000000',
+  },
+  fallbackGradient: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   fallbackContent: {
     alignItems: 'center',
     paddingHorizontal: 40,
+    maxWidth: 320,
+  },
+  audioIcon: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(139, 92, 246, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+    borderWidth: 2,
+    borderColor: 'rgba(139, 92, 246, 0.3)',
   },
   fallbackTitle: {
-    fontSize: 24,
-    fontWeight: '700',
+    fontSize: 28,
+    fontWeight: '800',
     color: 'white',
-    marginTop: 20,
-    marginBottom: 8,
+    marginBottom: 12,
+    textAlign: 'center',
   },
   fallbackSubtitle: {
     fontSize: 16,
@@ -830,59 +896,64 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   backToScannerButton: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  buttonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: 32,
     paddingVertical: 16,
-    backgroundColor: '#8B5CF6',
-    borderRadius: 12,
   },
   backToScannerText: {
     color: 'white',
     fontSize: 16,
-    fontWeight: '600',
-  },
-  // Landscape-specific styles
-  topControlsLandscape: {
-    top: 20,
-    paddingHorizontal: 30,
-  },
-  bottomInfoLandscape: {
-    bottom: 20,
-    left: 20,
-    right: 100,
-  },
-  infoContentLandscape: {
-    padding: 12,
-    maxWidth: 300,
-  },
-  reelsTitleLandscape: {
-    fontSize: 16,
-    marginBottom: 6,
-  },
-  reelsDescriptionLandscape: {
-    fontSize: 12,
-    lineHeight: 16,
-    marginBottom: 6,
-  },
-  rightActionsLandscape: {
-    right: 30,
-    bottom: 40,
-    gap: 20,
-  },
-  actionTextLandscape: {
-    fontSize: 10,
+    fontWeight: '700',
   },
   debugOverlay: {
     position: 'absolute',
-    top: 100,
+    top: 130,
     left: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    padding: 8,
-    borderRadius: 4,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    padding: 12,
+    borderRadius: 8,
     zIndex: 20,
   },
   debugText: {
     color: 'white',
-    fontSize: 10,
+    fontSize: 11,
     fontFamily: 'monospace',
+    opacity: 0.8,
+  },
+  
+  // Landscape-specific styles
+  topControlsLandscape: {
+    height: 80,
+  },
+  bottomContainerLandscape: {
+    height: 140,
+  },
+  contentInfoLandscape: {
+    maxWidth: 400,
+  },
+  reelsTitleLandscape: {
+    fontSize: 18,
+    marginBottom: 6,
+  },
+  reelsDescriptionLandscape: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 8,
+  },
+  rightActionsLandscape: {
+    gap: 16,
+  },
+  actionTextLandscape: {
+    fontSize: 10,
   },
 });
