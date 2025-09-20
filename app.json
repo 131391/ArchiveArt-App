@@ -6,6 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/images/ALogo-square.png",
     "userInterfaceStyle": "light",
+    "scheme": "archivart",
     "splash": {
       "image": "./assets/images/ALogo-square.png",
       "resizeMode": "contain",
@@ -66,6 +67,9 @@
       "eas": {
         "projectId": "46517ee9-ed66-4591-bb43-9023e7922fcb"
       }
+    },
+    "updates": {
+      "fallbackToCacheTimeout": 0
     },
     "owner": "omkar_br"
   }
