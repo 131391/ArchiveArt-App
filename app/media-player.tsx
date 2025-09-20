@@ -25,6 +25,7 @@ export default function MediaPlayerScreen() {
   const [isLandscapeMode, setIsLandscapeMode] = useState(false);
   const [videoDimensions, setVideoDimensions] = useState({ width: 0, height: 0 });
   const [videoAspectRatio, setVideoAspectRatio] = useState(16/9);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   
   // Auto-hide controls
   const controlsOpacity = useRef(new Animated.Value(1)).current;
@@ -129,7 +130,7 @@ export default function MediaPlayerScreen() {
           // Create new audio instance
           const { sound } = await Audio.Sound.createAsync(
             { uri: url },
-            { shouldPlay: false, isLooping: true, isMuted: false },
+            { shouldPlay: false, isLooping: true, isMuted: isMuted },
             (status) => {
               // Handle playback status updates
               if (status.isLoaded) {
@@ -193,7 +194,7 @@ export default function MediaPlayerScreen() {
           
           const { sound } = await Audio.Sound.createAsync(
             { uri: url },
-            { shouldPlay: false, isLooping: true, isMuted: false },
+            { shouldPlay: false, isLooping: true, isMuted: isMuted },
             (status) => {
               if (status.isLoaded) {
                 if (status.didJustFinish) {
@@ -283,6 +284,12 @@ export default function MediaPlayerScreen() {
           // Ignore errors during cleanup
         });
       }
+      // Reset orientation if in fullscreen
+      if (isFullscreen) {
+        ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {
+          // Ignore orientation reset error
+        });
+      }
       // Clear all timeouts
       if (controlsTimeoutRef.current) {
         clearTimeout(controlsTimeoutRef.current);
@@ -291,7 +298,7 @@ export default function MediaPlayerScreen() {
         clearTimeout(loadingTimeoutRef.current);
       }
     };
-  }, []);
+  }, [isFullscreen]);
 
   // Handle screen focus changes - stop audio when screen loses focus
   useFocusEffect(
@@ -442,20 +449,39 @@ export default function MediaPlayerScreen() {
     }
   };
 
-  const stopMedia = async () => {
+  const toggleMute = async () => {
     try {
       if (isAudio && audioRef.current) {
-        await audioRef.current.stopAsync();
-        await audioRef.current.setPositionAsync(0);
+        await audioRef.current.setIsMutedAsync(!isMuted);
+        setIsMuted(!isMuted);
       } else if (!isAudio && videoRef.current) {
-        await videoRef.current.stopAsync();
-        await videoRef.current.setPositionAsync(0);
+        await videoRef.current.setIsMutedAsync(!isMuted);
+        setIsMuted(!isMuted);
+      } else {
+        setIsMuted(!isMuted);
       }
-      setIsPlaying(false);
       showControlsWithDelay();
     } catch (error) {
-      // Handle stop error
-      setIsPlaying(false);
+      // Handle mute error
+      setIsMuted(!isMuted);
+    }
+  };
+
+
+  const toggleFullscreen = async () => {
+    try {
+      if (isFullscreen) {
+        // Exit fullscreen - lock to portrait
+        await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+        setIsFullscreen(false);
+      } else {
+        // Enter fullscreen - lock to landscape
+        await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
+        setIsFullscreen(true);
+      }
+    } catch (error) {
+      // Handle orientation lock error
+      setIsFullscreen(!isFullscreen);
     }
   };
 
@@ -478,6 +504,15 @@ export default function MediaPlayerScreen() {
         // Ignore errors during cleanup
       }
     }
+
+    // Reset orientation if in fullscreen
+    if (isFullscreen) {
+      try {
+        await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+      } catch (error) {
+        // Ignore orientation reset error
+      }
+    }
     
     // Navigate to fresh scanner screen instead of going back to previous state
     router.replace('/scanner');
@@ -485,12 +520,13 @@ export default function MediaPlayerScreen() {
 
   // Extract data from API response or use dynamic data
   const getDisplayData = () => {
+    // First priority: Check for actual title and description from API response
     if (mediaData && mediaData.match) {
       const match = mediaData.match;
       return {
-        title: match.title || match.name || (isAudio ? "Audio Match" : "Matched Content"),
+        title: match.title || match.name || match.actual_title || (isAudio ? "Audio Match" : "Matched Content"),
         collection: match.collection || (isAudio ? "Audio Collection" : "ArchivART Collection"),
-        description: match.description || match.similarity?.description || 
+        description: match.description || match.actual_description || match.similarity?.description || 
                    (isAudio ? `Audio similarity: ${match.similarity?.score ? (match.similarity.score * 100).toFixed(1) + '%' : 'N/A'}` : 
                     `Similarity Score: ${match.similarity?.score ? (match.similarity.score * 100).toFixed(1) + '%' : 'N/A'}`),
         environment: match.environment || (isAudio ? "Audio Archive" : "Digital Archive"),
@@ -499,6 +535,20 @@ export default function MediaPlayerScreen() {
         image: match.scanning_image ? `${API_CONFIG.BASE_URL}/uploads/media/${match.scanning_image}` : 
                match.audio_thumbnail ? `${API_CONFIG.BASE_URL}/uploads/media/${match.audio_thumbnail}` :
                match.image || "https://images.unsplash.com/photo-1446776877081-d282a0f896e2?w=400&h=300&fit=crop"
+      };
+    }
+
+    // Second priority: Check for direct mediaData properties
+    if (mediaData) {
+      return {
+        title: mediaData.title || mediaData.name || mediaData.actual_title || (isAudio ? "Audio Content" : "Media Content"),
+        collection: mediaData.collection || (isAudio ? "Audio Collection" : "ArchivART Collection"),
+        description: mediaData.description || mediaData.actual_description || 
+                   (isAudio ? "High-quality audio content from our digital archive" : "Immersive digital experience from our collection"),
+        environment: mediaData.environment || (isAudio ? "Audio Archive" : "Digital Archive"),
+        estimatedTime: mediaData.estimatedTime || (isAudio ? "Audio Track" : "Variable"),
+        rating: "4.8/5",
+        image: mediaData.image || mediaData.thumbnail || imageUri || "https://images.unsplash.com/photo-1446776877081-d282a0f896e2?w=400&h=300&fit=crop"
       };
     }
 
@@ -518,15 +568,15 @@ export default function MediaPlayerScreen() {
         image: imageUri || "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=300&fit=crop"
       };
     } else if (isSpaceContent) {
-      return {
-        title: "Space Explorer X-5",
-        collection: "Sci-Fi Vehicle Collection",
-        description: "A highly advanced interstellar vehicle designed for deep-space exploration. Features modular systems and a panoramic viewing cockpit.",
-        environment: "Space",
-        estimatedTime: "3 min",
-        rating: "4.8/5",
-        image: "https://images.unsplash.com/photo-1446776877081-d282a0f896e2?w=400&h=300&fit=crop"
-      };
+    return {
+      title: "Space Explorer X-5",
+      collection: "Sci-Fi Vehicle Collection",
+      description: "A highly advanced interstellar vehicle designed for deep-space exploration. Features modular systems and a panoramic viewing cockpit.",
+      environment: "Space",
+      estimatedTime: "3 min",
+      rating: "4.8/5",
+      image: "https://images.unsplash.com/photo-1446776877081-d282a0f896e2?w=400&h=300&fit=crop"
+    };
     } else if (isNatureContent) {
       return {
         title: "Forest Sanctuary",
@@ -565,36 +615,33 @@ export default function MediaPlayerScreen() {
   const getVideoStyle = () => {
     const screenWidth = screenData.width;
     const screenHeight = screenData.height;
-    const screenAspectRatio = screenWidth / screenHeight;
     
+    // For fullscreen videos, always use screen dimensions
+    if (isFullscreen || isLandscape()) {
+      return {
+        width: screenWidth,
+        height: screenHeight,
+        backgroundColor: '#000000',
+        alignSelf: 'center' as const,
+      };
+    }
+    
+    // For portrait mode, maintain aspect ratio but fill screen
     let videoWidth, videoHeight;
     
     if (videoDimensions.width > 0 && videoDimensions.height > 0) {
-      // Use actual video dimensions
+      // Use actual video dimensions to maintain aspect ratio
       const videoAspect = videoDimensions.width / videoDimensions.height;
+      const screenAspectRatio = screenWidth / screenHeight;
       
-      if (isLandscape()) {
-        // Landscape mode: fit video to screen width, maintain aspect ratio
         if (videoAspect > screenAspectRatio) {
-          // Video is wider than screen
+        // Video is wider than screen - fit to width
           videoWidth = screenWidth;
           videoHeight = screenWidth / videoAspect;
         } else {
-          // Video is taller than screen
+        // Video is taller than screen - fit to height
           videoHeight = screenHeight;
           videoWidth = screenHeight * videoAspect;
-        }
-      } else {
-        // Portrait mode: fit video to screen height, maintain aspect ratio
-        if (videoAspect > screenAspectRatio) {
-          // Video is wider than screen
-          videoWidth = screenWidth;
-          videoHeight = screenWidth / videoAspect;
-        } else {
-          // Video is taller than screen
-          videoHeight = screenHeight;
-          videoWidth = screenHeight * videoAspect;
-        }
       }
     } else {
       // Fallback: use screen dimensions
@@ -611,10 +658,12 @@ export default function MediaPlayerScreen() {
   };
 
   const getVideoResizeMode = () => {
-    if (videoDimensions.width > 0 && videoDimensions.height > 0) {
-      return ResizeMode.CONTAIN; // Always use contain when we have video dimensions
+    // For fullscreen or landscape mode, use COVER to fill the screen
+    if (isFullscreen || isLandscape()) {
+      return ResizeMode.COVER;
     }
-    return isLandscape() ? ResizeMode.CONTAIN : ResizeMode.COVER;
+    // For portrait mode, use CONTAIN to maintain aspect ratio
+    return ResizeMode.CONTAIN;
   };
 
   return (
@@ -668,7 +717,7 @@ export default function MediaPlayerScreen() {
           />
           
           {/* Tap Area for Controls */}
-          <Pressable
+          <Pressable 
             style={styles.tapArea}
             onPress={showControlsWithDelay}
           />
@@ -728,14 +777,14 @@ export default function MediaPlayerScreen() {
               <View style={styles.topRightControls}>
                 <TouchableOpacity 
                   style={styles.controlButton}
-                  onPress={stopMedia}
+                  onPress={toggleFullscreen}
                   activeOpacity={0.8}
                 >
-                  <Ionicons name="stop" size={22} color="white" />
+                  <Ionicons name={isFullscreen ? "contract" : "expand"} size={24} color="white" />
                 </TouchableOpacity>
                 <TouchableOpacity 
                   style={styles.controlButton}
-                  onPress={() => setIsMuted(!isMuted)}
+                  onPress={toggleMute}
                   activeOpacity={0.8}
                 >
                   <Ionicons name={isMuted ? "volume-mute" : "volume-high"} size={24} color="white" />
@@ -744,8 +793,7 @@ export default function MediaPlayerScreen() {
             </View>
           </Animated.View>
 
-          {/* Center Play/Pause Button - Only when paused */}
-          {!isPlaying && (
+          {/* Center Play/Pause Button - Always visible and centered */}
             <Animated.View style={[styles.centerPlayButton, { opacity: controlsOpacity }]}>
               <TouchableOpacity 
                 style={styles.playButtonContainer}
@@ -756,11 +804,10 @@ export default function MediaPlayerScreen() {
                   colors={['rgba(255,255,255,0.2)', 'rgba(255,255,255,0.1)']}
                   style={styles.playButtonGradient}
                 >
-                  <Ionicons name={isPlaying ? "pause" : "play"} size={32} color="white" />
+                <Ionicons name={isPlaying ? "pause" : "play"} size={32} color="white" />
                 </LinearGradient>
               </TouchableOpacity>
             </Animated.View>
-          )}
 
           {/* Bottom Content - Title, Description & Actions */}
           <Animated.View style={[
@@ -842,18 +889,6 @@ export default function MediaPlayerScreen() {
                     Share
                   </Text>
                 </TouchableOpacity>
-
-                <TouchableOpacity 
-                  style={styles.actionButton}
-                  activeOpacity={0.8}
-                >
-                  <View style={styles.actionIcon}>
-                    <Ionicons name="bookmark-outline" size={isLandscape() ? 18 : 22} color="white" />
-                  </View>
-                  <Text style={[styles.actionText, isLandscape() && styles.actionTextLandscape]}>
-                    Save
-                  </Text>
-                </TouchableOpacity>
               </View>
             </View>
           </Animated.View>
@@ -896,7 +931,7 @@ export default function MediaPlayerScreen() {
                 <Text style={styles.errorText}>Unable to load audio</Text>
                 <Text style={styles.errorSubtext}>
                   {!url ? 'No audio URL provided' : 'Please check your connection and try again'}
-                </Text>
+              </Text>
                 <TouchableOpacity 
                   style={[styles.retryButton, !url && { opacity: 0.5 }]}
                   onPress={async () => {
@@ -910,7 +945,7 @@ export default function MediaPlayerScreen() {
                     try {
                       const { sound } = await Audio.Sound.createAsync(
                         { uri: url },
-                        { shouldPlay: false, isLooping: true, isMuted: false },
+                        { shouldPlay: false, isLooping: true, isMuted: isMuted },
                         (status) => {
                           if (status.isLoaded) {
                             if (status.didJustFinish) {
@@ -976,22 +1011,25 @@ export default function MediaPlayerScreen() {
                 </TouchableOpacity>
                 
                 <View style={styles.topRightControls}>
-                  <TouchableOpacity 
-                    style={styles.controlButton}
-                    onPress={stopMedia}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons name="stop" size={22} color="white" />
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={styles.controlButton}
-                    onPress={() => setIsMuted(!isMuted)}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons name={isMuted ? "volume-mute" : "volume-high"} size={22} color="white" />
-                  </TouchableOpacity>
-                </View>
+                  {/* No controls needed for audio top right - mute is in action buttons */}
+        </View>
               </View>
+            </Animated.View>
+
+            {/* Center Play/Pause Button for Audio - Always visible and centered */}
+            <Animated.View style={[styles.centerPlayButton, { opacity: controlsOpacity }]}>
+              <TouchableOpacity 
+                style={styles.playButtonContainer}
+                onPress={togglePlayPause}
+                activeOpacity={0.9}
+              >
+                <LinearGradient
+                  colors={['rgba(255,255,255,0.2)', 'rgba(255,255,255,0.1)']}
+                  style={styles.playButtonGradient}
+                >
+                  <Ionicons name={isPlaying ? "pause" : "play"} size={32} color="white" />
+                </LinearGradient>
+              </TouchableOpacity>
             </Animated.View>
 
             {/* Audio Visualizer */}
@@ -1022,20 +1060,6 @@ export default function MediaPlayerScreen() {
                     </LinearGradient>
                   )}
                 </View>
-                
-                {/* Play/Pause Button Overlay */}
-                <TouchableOpacity 
-                  style={styles.audioPlayButton}
-                  onPress={togglePlayPause}
-                  activeOpacity={0.8}
-                >
-                  <LinearGradient
-                    colors={['rgba(255,255,255,0.9)', 'rgba(255,255,255,0.7)']}
-                    style={styles.audioPlayButtonGradient}
-                  >
-                    <Ionicons name={isPlaying ? "pause" : "play"} size={32} color="#1a1a2e" />
-                  </LinearGradient>
-                </TouchableOpacity>
               </View>
             </View>
 
@@ -1081,6 +1105,23 @@ export default function MediaPlayerScreen() {
                 <View style={styles.rightActions}>
                   <TouchableOpacity 
                     style={styles.actionButton}
+                    onPress={toggleMute}
+                    activeOpacity={0.8}
+                  >
+                    <View style={styles.actionIcon}>
+                      <Ionicons 
+                        name={isMuted ? "volume-mute" : "volume-high"} 
+                        size={22} 
+                        color="white" 
+                      />
+                    </View>
+                    <Text style={styles.actionText}>
+                      {isMuted ? "Unmute" : "Mute"}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    style={styles.actionButton}
                     onPress={() => setIsLiked(!isLiked)}
                     activeOpacity={0.8}
                   >
@@ -1105,18 +1146,6 @@ export default function MediaPlayerScreen() {
                     </View>
                     <Text style={styles.actionText}>
                       Share
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity 
-                    style={styles.actionButton}
-                    activeOpacity={0.8}
-                  >
-                    <View style={styles.actionIcon}>
-                      <Ionicons name="bookmark-outline" size={22} color="white" />
-                    </View>
-                    <Text style={styles.actionText}>
-                      Save
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -1267,6 +1296,9 @@ const styles = StyleSheet.create({
   },
   centerPlayButton: {
     position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -40 }, { translateY: -40 }],
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,
@@ -1305,10 +1337,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 40,
     height: '100%',
+    position: 'relative',
   },
   contentInfo: {
     flex: 1,
-    marginRight: 20,
+    marginRight: 100, // Space for absolutely positioned action buttons
   },
   reelsTitle: {
     fontSize: 22,
@@ -1346,7 +1379,11 @@ const styles = StyleSheet.create({
   },
   rightActions: {
     alignItems: 'center',
-    gap: 20,
+    gap: 24,
+    position: 'absolute',
+    right: 20,
+    top: '50%',
+    transform: [{ translateY: -100 }],
   },
   actionButton: {
     alignItems: 'center',
@@ -1453,6 +1490,7 @@ const styles = StyleSheet.create({
   },
   contentInfoLandscape: {
     maxWidth: 400,
+    marginRight: 80, // Space for absolutely positioned action buttons in landscape
   },
   reelsTitleLandscape: {
     fontSize: 18,
@@ -1464,7 +1502,11 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   rightActionsLandscape: {
-    gap: 16,
+    gap: 20,
+    position: 'absolute',
+    right: 20,
+    top: '50%',
+    transform: [{ translateY: -80 }],
   },
   actionTextLandscape: {
     fontSize: 10,
