@@ -1,7 +1,7 @@
 import { AutoDismissNotification } from '@/components/ui/AutoDismissNotification';
 import { ModernTextInput } from '@/components/ui/ModernTextInput';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
-import { validateIndianMobile } from '@/constants/Api';
+import { getProfileImageUrl, validateIndianMobile } from '@/constants/Api';
 import { useAuth } from '@/contexts/AuthContext';
 import { getAvatarProps, getInitialsBackgroundColor, parseLocalPhoneNumber } from '@/utils/avatarUtils';
 import { Ionicons } from '@expo/vector-icons';
@@ -34,6 +34,7 @@ export default function ProfileUpdateScreen() {
   const [name, setName] = useState('');
   const [mobile, setMobile] = useState('');
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
+  const [profilePictureBase64, setProfilePictureBase64] = useState<string | null>(null);
   const [imageLoadError, setImageLoadError] = useState(false);
 
   // Validation errors
@@ -130,11 +131,16 @@ export default function ProfileUpdateScreen() {
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
-        base64: false,
+        base64: true,
       });
 
       if (!result.canceled && result.assets[0]) {
-        setProfilePicture(result.assets[0].uri);
+        const asset = result.assets[0];
+        
+        // Store the URI for preview (better performance than base64)
+        setProfilePicture(asset.uri);
+        // Store base64 for API submission
+        setProfilePictureBase64(asset.base64 || null);
         setImageLoadError(false);
       }
     } catch (error) {
@@ -145,6 +151,7 @@ export default function ProfileUpdateScreen() {
 
   const removeImage = () => {
     setProfilePicture(null);
+    setProfilePictureBase64(null);
     setImageLoadError(false);
   };
 
@@ -172,9 +179,17 @@ export default function ProfileUpdateScreen() {
 
       // Add profile picture if selected and different from current
       if (profilePicture && profilePicture !== user?.profile_picture) {
-        profileData.profile_picture = profilePicture;
+        // Use base64 data for API if available, otherwise use the URI
+        if (profilePictureBase64) {
+          profileData.profile_picture = `data:image/jpeg;base64,${profilePictureBase64}`;
+        } else if (profilePicture.startsWith('data:') || !profilePicture.startsWith('http')) {
+          profileData.profile_picture = profilePicture.startsWith('data:') 
+            ? profilePicture 
+            : `data:image/jpeg;base64,${profilePicture}`;
+        } else {
+          profileData.profile_picture = profilePicture;
+        }
       }
-
 
       // Use AuthContext updateProfile method
       const error = await updateProfile(profileData);
@@ -228,7 +243,7 @@ export default function ProfileUpdateScreen() {
             style={styles.backButton}
             onPress={() => router.back()}
           >
-            <Ionicons name="arrow-back" size={24} color="#1E293B" />
+            <Ionicons name="chevron-back" size={28} color="#3B82F6" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Update Profile</Text>
           <View style={styles.placeholder} />
@@ -240,7 +255,11 @@ export default function ProfileUpdateScreen() {
             <View style={styles.profilePictureWrapper}>
               {profilePicture && !imageLoadError ? (
                 <Image 
-                  source={{ uri: profilePicture }}
+                  source={{ 
+                    uri: profilePicture.startsWith('file:') || profilePicture.startsWith('content:')
+                      ? profilePicture 
+                      : getProfileImageUrl(profilePicture) || ''
+                  }}
                   style={styles.profileImage}
                   onError={() => setImageLoadError(true)}
                 />
@@ -375,17 +394,12 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
   },
   headerTitle: {
     fontSize: 20,

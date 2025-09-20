@@ -1,4 +1,5 @@
 import { WarningModal } from '@/components/ui/WarningModal';
+import { getProfileImageUrl } from '@/constants/Api';
 import { useAuth } from '@/contexts/AuthContext';
 import { getAvatarProps } from '@/utils/avatarUtils';
 import { Ionicons } from '@expo/vector-icons';
@@ -40,25 +41,36 @@ export default function ProfileScreen() {
         contentContainerStyle={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
       >
+        {/* Back Button */}
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <Ionicons name="chevron-back" size={28} color="#3B82F6" />
+        </TouchableOpacity>
+
         {/* Main Content */}
         <View style={styles.mainContent}>
           {/* Profile Header */}
           <View style={styles.profileHeader}>
             <View style={styles.avatarContainer}>
-              {avatarProps?.hasProfilePicture && !imageLoadError ? (
-                <Image 
-                  source={{ uri: avatarProps.profilePictureUrl! }}
-                  style={styles.profileImage}
-                  onError={() => {
-                    setImageLoadError(true);
-                  }}
-                />
-              ) : (
-                <Image 
-                  source={avatarProps?.defaultAvatarUrl}
-                  style={styles.profileImage}
-                />
-              )}
+              <View style={styles.profileImageWrapper}>
+                {avatarProps?.hasProfilePicture && !imageLoadError ? (
+                  <Image 
+                    source={{ uri: getProfileImageUrl(avatarProps.profilePictureUrl!) || '' }}
+                    style={styles.profileImage}
+                    onError={() => {
+                      setImageLoadError(true);
+                    }}
+                  />
+                ) : (
+                  <Image 
+                    source={avatarProps?.defaultAvatarUrl}
+                    style={styles.profileImage}
+                  />
+                )}
+                <View style={styles.profileImageBorder} />
+              </View>
               <View style={styles.verifiedBadge}>
                 <Ionicons name="checkmark" size={12} color="#FFFFFF" />
               </View>
@@ -174,6 +186,18 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8FAFC',
   },
+  backButton: {
+    position: 'absolute',
+    top: 50,
+    left: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    zIndex: 10,
+  },
   scrollContainer: {
     flexGrow: 1,
     paddingHorizontal: 20,
@@ -195,17 +219,30 @@ const styles = StyleSheet.create({
     position: 'relative',
     marginBottom: 16,
   },
+  profileImageWrapper: {
+    position: 'relative',
+  },
+  profileImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+  },
+  profileImageBorder: {
+    position: 'absolute',
+    top: -3,
+    left: -3,
+    right: -3,
+    bottom: -3,
+    borderRadius: 43,
+    borderWidth: 3,
+    borderColor: '#3B82F6',
+  },
   avatarGradient: {
     width: 80,
     height: 80,
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  profileImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 20,
   },
   avatarInitials: {
     fontSize: 28,

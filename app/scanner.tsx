@@ -549,7 +549,7 @@ export default function ScannerScreen() {
       <View style={styles.container}>
       <View style={styles.topBar}>
         <TouchableOpacity onPress={() => router.replace('/welcome')} style={styles.topBtn}>
-          <Ionicons name="chevron-back" size={24} color="#fff" />
+          <Ionicons name="chevron-back" size={28} color="#3B82F6" />
         </TouchableOpacity>
         <Text style={styles.appName}>ArchivArt</Text>
         <View style={styles.topBtn} />
@@ -701,7 +701,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     zIndex: 2,
   },
-  topBtn: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center' },
+  topBtn: { 
+    width: 44, 
+    height: 44, 
+    borderRadius: 22,
+    alignItems: 'center', 
+    justifyContent: 'center',
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+  },
   appName: { color: '#fff', fontSize: 18, fontWeight: '800' },
   overlay: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   frame: {

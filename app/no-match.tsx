@@ -3,94 +3,142 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React from 'react';
 import {
-    Dimensions,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Dimensions,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  useColorScheme,
 } from 'react-native';
 
 export default function NoMatchScreen() {
   const { width, height } = Dimensions.get('window');
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+    <View style={[styles.container, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC' }]}>
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={isDark ? '#0F172A' : '#F8FAFC'} />
       
       {/* Header Section */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC' }]}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.replace('/scanner')}
         >
-          <Ionicons name="arrow-back" size={24} color="#333333" />
+          <Ionicons name="chevron-back" size={28} color="#3B82F6" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Scan Result</Text>
+        <Text style={[styles.headerTitle, { color: isDark ? '#F1F5F9' : '#1E293B' }]}>Scan Result</Text>
         <View style={styles.placeholder} />
       </View>
 
       {/* Main Content */}
       <View style={styles.content}>
-        {/* Error Icon */}
-        <View style={styles.iconContainer}>
-          <View style={styles.iconBackground}>
-            <View style={styles.cubeIcon}>
-              <View style={styles.cubeFace} />
+        {/* Modern Illustration */}
+        <View style={styles.illustrationContainer}>
+          <LinearGradient
+            colors={isDark ? ['#1E293B', '#334155'] : ['#E0F2FE', '#BAE6FD']}
+            style={styles.illustrationBackground}
+          >
+            <View style={styles.scanIconContainer}>
+              <Ionicons name="scan-outline" size={60} color={isDark ? '#3B82F6' : '#0284C7'} />
             </View>
-            <View style={styles.xIcon}>
-              <View style={styles.xLine1} />
-              <View style={styles.xLine2} />
+            <View style={styles.searchIconContainer}>
+              <Ionicons name="search-outline" size={40} color={isDark ? '#EF4444' : '#DC2626'} />
             </View>
-          </View>
+            <View style={styles.questionMarkContainer}>
+              <Text style={[styles.questionMark, { color: isDark ? '#64748B' : '#94A3B8' }]}>?</Text>
+            </View>
+          </LinearGradient>
         </View>
 
         {/* Text Content */}
         <View style={styles.textContainer}>
-          <Text style={styles.title}>No Match Found</Text>
-          <Text style={styles.subtitle}>
-            We couldn't find any matching media for your scan. This could be because:
+          <Text style={[styles.title, { color: isDark ? '#F1F5F9' : '#1E293B' }]}>
+            No Match Found
+          </Text>
+          <Text style={[styles.subtitle, { color: isDark ? '#94A3B8' : '#64748B' }]}>
+            We couldn't find any matching media in our database. Don't worry, this happens sometimes!
           </Text>
           
-          <View style={styles.reasonsList}>
-            <View style={styles.reasonItem}>
-              <Ionicons name="camera-outline" size={20} color="#666666" />
-              <Text style={styles.reasonText}>Low light or blur</Text>
-            </View>
-            <View style={styles.reasonItem}>
-              <Ionicons name="search-outline" size={20} color="#666666" />
-              <Text style={styles.reasonText}>Object not recognized</Text>
-            </View>
-            <View style={styles.reasonItem}>
-              <Ionicons name="wifi-outline" size={20} color="#666666" />
-              <Text style={styles.reasonText}>No internet connection</Text>
+          {/* Tips Section */}
+          <View style={styles.tipsContainer}>
+            <Text style={[styles.tipsTitle, { color: isDark ? '#F1F5F9' : '#1E293B' }]}>
+              Try these tips for better results:
+            </Text>
+            
+            <View style={styles.tipsList}>
+              <View style={styles.tipItem}>
+                <View style={[styles.tipIcon, { backgroundColor: isDark ? '#1E293B' : '#E0F2FE' }]}>
+                  <Ionicons name="sunny-outline" size={20} color={isDark ? '#F59E0B' : '#D97706'} />
+                </View>
+                <View style={styles.tipContent}>
+                  <Text style={[styles.tipTitle, { color: isDark ? '#F1F5F9' : '#1E293B' }]}>
+                    Good Lighting
+                  </Text>
+                  <Text style={[styles.tipDescription, { color: isDark ? '#94A3B8' : '#64748B' }]}>
+                    Ensure your subject is well-lit and avoid shadows
+                  </Text>
+                </View>
+              </View>
+              
+              <View style={styles.tipItem}>
+                <View style={[styles.tipIcon, { backgroundColor: isDark ? '#1E293B' : '#E0F2FE' }]}>
+                  <Ionicons name="camera-outline" size={20} color={isDark ? '#3B82F6' : '#0284C7'} />
+                </View>
+                <View style={styles.tipContent}>
+                  <Text style={[styles.tipTitle, { color: isDark ? '#F1F5F9' : '#1E293B' }]}>
+                    Steady Focus
+                  </Text>
+                  <Text style={[styles.tipDescription, { color: isDark ? '#94A3B8' : '#64748B' }]}>
+                    Hold your device steady and wait for auto-focus
+                  </Text>
+                </View>
+              </View>
+              
+              <View style={styles.tipItem}>
+                <View style={[styles.tipIcon, { backgroundColor: isDark ? '#1E293B' : '#E0F2FE' }]}>
+                  <Ionicons name="expand-outline" size={20} color={isDark ? '#10B981' : '#059669'} />
+                </View>
+                <View style={styles.tipContent}>
+                  <Text style={[styles.tipTitle, { color: isDark ? '#F1F5F9' : '#1E293B' }]}>
+                    Clear View
+                  </Text>
+                  <Text style={[styles.tipDescription, { color: isDark ? '#94A3B8' : '#64748B' }]}>
+                    Make sure the object fills most of the frame
+                  </Text>
+                </View>
+              </View>
             </View>
           </View>
         </View>
 
-        {/* Pagination Dots */}
-        <View style={styles.paginationContainer}>
-          <View style={styles.paginationDot} />
-          <View style={[styles.paginationDot, styles.paginationDotInactive]} />
-          <View style={[styles.paginationDot, styles.paginationDotInactive]} />
-          <View style={[styles.paginationDot, styles.paginationDotInactive]} />
-        </View>
-
-        {/* Action Button */}
+        {/* Action Buttons */}
         <View style={styles.actionContainer}>
           <TouchableOpacity
             style={styles.scanAgainButton}
             onPress={() => router.replace('/scanner')}
           >
             <LinearGradient
-              colors={['#4A90E2', '#7B68EE']}
+              colors={['#3B82F6', '#1D4ED8']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.scanAgainGradient}
             >
-              <Text style={styles.scanAgainText}>Scan Again</Text>
               <Ionicons name="camera" size={20} color="#FFFFFF" />
+              <Text style={styles.scanAgainText}>Scan Again</Text>
             </LinearGradient>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[styles.homeButton, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
+            onPress={() => router.replace('/welcome')}
+          >
+            <Ionicons name="home-outline" size={20} color={isDark ? '#F1F5F9' : '#64748B'} />
+            <Text style={[styles.homeButtonText, { color: isDark ? '#F1F5F9' : '#64748B' }]}>
+              Back to Home
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -101,7 +149,6 @@ export default function NoMatchScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',
@@ -110,167 +157,184 @@ const styles = StyleSheet.create({
     paddingTop: 50,
     paddingBottom: 20,
     paddingHorizontal: 20,
-    backgroundColor: '#FFFFFF',
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333333',
     letterSpacing: 0.5,
   },
   placeholder: {
-    width: 40,
+    width: 44,
   },
   content: {
     flex: 1,
     paddingHorizontal: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
+    paddingTop: 10,
   },
-  iconContainer: {
+  
+  // Modern Illustration Styles
+  illustrationContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 40,
+    marginBottom: 30,
+    marginTop: 5,
   },
-  iconBackground: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: '#E3F2FD',
+  illustrationBackground: {
+    width: 160,
+    height: 160,
+    borderRadius: 80,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 8,
   },
-  cubeIcon: {
-    width: 50,
-    height: 50,
-    position: 'relative',
-  },
-  cubeFace: {
+  scanIconContainer: {
     position: 'absolute',
-    width: 40,
-    height: 40,
-    backgroundColor: '#4A90E2',
-    opacity: 0.8,
-    borderRadius: 6,
-    top: 5,
-    left: 5,
+    top: 30,
+    left: 30,
   },
-  xIcon: {
+  searchIconContainer: {
     position: 'absolute',
-    width: 50,
-    height: 50,
-    alignItems: 'center',
-    justifyContent: 'center',
+    top: 60,
+    right: 40,
   },
-  xLine1: {
+  questionMarkContainer: {
     position: 'absolute',
-    width: 35,
-    height: 4,
-    backgroundColor: '#FF4444',
-    borderRadius: 2,
-    transform: [{ rotate: '45deg' }],
+    bottom: 30,
+    left: 50,
   },
-  xLine2: {
-    position: 'absolute',
-    width: 35,
-    height: 4,
-    backgroundColor: '#FF4444',
-    borderRadius: 2,
-    transform: [{ rotate: '-45deg' }],
+  questionMark: {
+    fontSize: 32,
+    fontWeight: '800',
   },
+  
+  // Text Content Styles
   textContainer: {
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: 25,
   },
   title: {
     fontSize: 28,
-    fontWeight: '700',
-    color: '#333333',
-    marginBottom: 16,
+    fontWeight: '800',
+    marginBottom: 12,
     textAlign: 'center',
-    letterSpacing: 0.5,
+    letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#666666',
+    fontSize: 15,
     textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 32,
-    paddingHorizontal: 20,
+    lineHeight: 22,
+    marginBottom: 20,
+    paddingHorizontal: 10,
   },
-  reasonsList: {
+  
+  // Tips Section Styles
+  tipsContainer: {
     width: '100%',
-    paddingHorizontal: 20,
+    paddingHorizontal: 10,
   },
-  reasonItem: {
+  tipsTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  tipsList: {
+    gap: 12,
+  },
+  tipItem: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-    paddingVertical: 8,
+    alignItems: 'flex-start',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    backgroundColor: 'rgba(59, 130, 246, 0.05)',
   },
-  reasonText: {
-    fontSize: 14,
-    color: '#666666',
-    marginLeft: 12,
-    flex: 1,
-    lineHeight: 20,
-  },
-  paginationContainer: {
-    flexDirection: 'row',
+  tipIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 40,
+    marginRight: 10,
   },
-  paginationDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#4A90E2',
-    marginHorizontal: 3,
+  tipContent: {
+    flex: 1,
   },
-  paginationDotInactive: {
-    backgroundColor: '#D1D5DB',
+  tipTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 3,
   },
+  tipDescription: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  
+  // Action Button Styles
   actionContainer: {
     width: '100%',
-    paddingHorizontal: 20,
-    paddingBottom: 40,
+    paddingBottom: 30,
+    flexDirection: 'row',
+    gap: 12,
   },
   scanAgainButton: {
+    flex: 1,
     borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#3B82F6',
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 6,
-    marginHorizontal: 20,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   scanAgainGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 18,
-    paddingHorizontal: 24,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    gap: 6,
   },
   scanAgainText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
-    marginRight: 8,
+    letterSpacing: 0.3,
+  },
+  homeButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    gap: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  homeButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
     letterSpacing: 0.3,
   },
 });

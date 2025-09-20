@@ -647,10 +647,6 @@ class AuthService {
     
     const data = await response.json();
     
-    
-    
-    
-    
     // Update stored user data
     await AsyncStorage.setItem('user', JSON.stringify(data.user));
     
@@ -664,42 +660,59 @@ class AuthService {
     profile_picture?: string | File;
   }): Promise<User> {
     
+    // Check if profile_picture is base64 data
+    const isBase64 = typeof profileData.profile_picture === 'string' && 
+      (profileData.profile_picture.startsWith('data:') || 
+       (!profileData.profile_picture.startsWith('http') && profileData.profile_picture.length > 100));
     
-    const formData = new FormData();
+    let requestBody;
+    let headers: Record<string, string> = {};
     
-    // Add text fields
-    if (profileData.name) {
-      formData.append('name', profileData.name);
-    }
-    if (profileData.mobile) {
-      formData.append('mobile', profileData.mobile);
-    }
-    
-    // Add profile picture if provided
-    if (profileData.profile_picture) {
-      if (typeof profileData.profile_picture === 'string') {
-        // It's a URI from image picker
-        formData.append('profile_picture', {
-          uri: profileData.profile_picture,
-          type: 'image/jpeg',
-          name: 'profile-picture.jpg',
-        } as any);
-      } else {
-        // It's a File object
-        formData.append('profile_picture', profileData.profile_picture);
+    if (isBase64) {
+      // Send as JSON for base64 data
+      requestBody = JSON.stringify(profileData);
+      headers['Content-Type'] = 'application/json';
+    } else {
+      // Use FormData for file uploads
+      const formData = new FormData();
+      
+      // Add text fields
+      if (profileData.name) {
+        formData.append('name', profileData.name);
       }
+      if (profileData.mobile) {
+        formData.append('mobile', profileData.mobile);
+      }
+      
+      // Add profile picture if provided
+      if (profileData.profile_picture) {
+        if (typeof profileData.profile_picture === 'string') {
+          // It's a URI from image picker
+          formData.append('profile_picture', {
+            uri: profileData.profile_picture,
+            type: 'image/jpeg',
+            name: 'profile-picture.jpg',
+          } as any);
+        } else {
+          // It's a File object
+          formData.append('profile_picture', profileData.profile_picture);
+        }
+      }
+      
+      requestBody = formData;
+      // Don't set Content-Type header - let the browser set it with boundary for FormData
     }
+    
+    const requestConfig = {
+      method: 'PUT',
+      body: requestBody,
+      ...(Object.keys(headers).length > 0 && { headers })
+    };
     
     const response = await this.makeAuthenticatedRequest(
       buildUrl(API_ENDPOINTS.AUTH.UPDATE_PROFILE),
-      {
-        method: 'PUT',
-        body: formData,
-        // Don't set Content-Type header - let the browser set it with boundary for FormData
-      }
+      requestConfig
     );
-    
-    
     
     if (!response.ok) {
       let errorMessage = 'Failed to update profile';
@@ -708,13 +721,12 @@ class AuthService {
         errorMessage = errorData.message || errorData.error || errorMessage;
         
       } catch (parseError) {
-        
+        // Handle parse error silently
       }
       throw new Error(errorMessage);
     }
     
     const data = await response.json();
-    
     
     // Update stored user data
     await AsyncStorage.setItem('user', JSON.stringify(data.user));

@@ -200,6 +200,31 @@ export function getApiUrl(endpoint: string): string {
 }
 
 /**
+ * Gets the proper URL for profile images
+ * @param profilePicture - Profile picture URL or path
+ * @returns Complete URL string for the profile image
+ */
+export function getProfileImageUrl(profilePicture?: string | null): string | null {
+  if (!profilePicture) {
+    return null;
+  }
+
+  // If it's already a complete URL (http/https), return as is
+  if (profilePicture.startsWith('http://') || profilePicture.startsWith('https://')) {
+    return profilePicture;
+  }
+
+  // If it's base64 data, return as is
+  if (profilePicture.startsWith('data:')) {
+    return profilePicture;
+  }
+
+  // If it's a relative path, construct the full URL using base URL
+  const cleanPath = profilePicture.startsWith('/') ? profilePicture : `/${profilePicture}`;
+  return `${API_CONFIG.BASE_URL}${cleanPath}`;
+}
+
+/**
  * Creates a standardized API request configuration
  * @param method - HTTP method
  * @param endpoint - API endpoint

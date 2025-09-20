@@ -1,3 +1,4 @@
+import { getProfileImageUrl } from '@/constants/Api';
 import { useAuth } from '@/contexts/AuthContext';
 import { getAvatarProps } from '@/utils/avatarUtils';
 import { Ionicons } from '@expo/vector-icons';
@@ -45,7 +46,7 @@ export default function WelcomeScreen() {
               <View style={styles.profileImageWrapper}>
                 {avatarProps.hasProfilePicture && !imageLoadError ? (
                   <Image 
-                    source={{ uri: avatarProps.profilePictureUrl! }}
+                    source={{ uri: getProfileImageUrl(avatarProps.profilePictureUrl!) || '' }}
                     style={styles.profileImage}
                     onError={() => {
                       setImageLoadError(true);
@@ -138,7 +139,7 @@ export default function WelcomeScreen() {
             onPress={() => router.push('/profile')}
             style={styles.profileButton}
           >
-            <Ionicons name="person-circle-outline" size={24} color="#3B82F6" />
+            <Ionicons name="person-circle-outline" size={28} color="#3B82F6" />
           </TouchableOpacity>
         )}
       </View>
@@ -166,7 +167,7 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
   },
   profileImageContainer: {
-    marginBottom: 20,
+    marginBottom: 12,
   },
   profileImageWrapper: {
     position: 'relative',
@@ -342,11 +343,11 @@ const styles = StyleSheet.create({
   },
   profileButton: {
     position: 'absolute',
-    top: 20,
+    top: 50,
     right: 20,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(59, 130, 246, 0.1)',
