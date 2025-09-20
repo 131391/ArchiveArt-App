@@ -152,11 +152,40 @@ export default function ScannerScreen() {
     }
   }, [permission]);
 
-  // Manual capture only - no auto-capture
+  // Auto-capture with countdown - only once per session
   useEffect(() => {
     if (isScanning && !hasAutoCaptured && !isProcessing && isReady) {
-      console.log('📸 Scanner ready for manual capture...');
-      setCountdown(0); // No countdown, just ready state
+      console.log('📸 Starting auto-capture countdown...');
+      
+      // Start countdown from 5 seconds for better focus
+      setCountdown(5);
+      
+      // Countdown timer
+      const countdownInterval = setInterval(() => {
+        setCountdown(prev => {
+          if (prev <= 1) {
+            clearInterval(countdownInterval);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      
+      // Auto-capture timer - only happens once
+      const timer = setTimeout(() => {
+        if (isScanning && !hasAutoCaptured && !isProcessing && isReady) {
+          console.log('📸 Auto-capturing image...');
+          handleCapture();
+        }
+        clearInterval(countdownInterval);
+      }, 5000); // Auto-capture after 5 seconds for better focus
+      
+      setAutoCaptureTimer(timer);
+      
+      return () => {
+        clearTimeout(timer);
+        clearInterval(countdownInterval);
+      };
     } else {
       setCountdown(0);
     }
@@ -422,6 +451,12 @@ export default function ScannerScreen() {
     setShowWarning(false);
     setErrorMessage('');
     
+    // Clear any pending auto-capture timer
+    if (autoCaptureTimer) {
+      clearTimeout(autoCaptureTimer);
+      setAutoCaptureTimer(null);
+    }
+    
     // Don't automatically restart - wait for user to manually start scanning
     console.log('🔄 Scanner reset - ready for manual restart');
   };
@@ -437,6 +472,12 @@ export default function ScannerScreen() {
     setShowWarning(false);
     setErrorMessage('');
     setIsReady(false);
+    
+    // Clear any pending auto-capture timer
+    if (autoCaptureTimer) {
+      clearTimeout(autoCaptureTimer);
+      setAutoCaptureTimer(null);
+    }
     
     // Don't automatically restart - wait for user to manually start scanning
     console.log('🔄 Fresh scanner ready - waiting for manual start');
@@ -524,6 +565,9 @@ export default function ScannerScreen() {
                 if (!isScanning && isReady && !isProcessing) {
                   console.log('📸 Starting scanning manually...');
                   setIsScanning(true);
+                } else if (isScanning && !hasAutoCaptured && !isProcessing && isReady) {
+                  console.log('📸 Manual capture during countdown...');
+                  handleCapture();
                 }
               }}
               activeOpacity={0.8}
@@ -582,7 +626,13 @@ export default function ScannerScreen() {
               <View style={styles.statusIndicator}>
                 <View style={[styles.statusDot, { backgroundColor: isReady ? '#10B981' : '#F59E0B' }]} />
                 <Text style={styles.statusText}>
-                  {isReady ? (isScanning ? 'Ready to Scan' : 'Tap to Start Scanning') : 'Focusing...'}
+                  {isReady ? (
+                    isScanning ? (
+                      hasAutoCaptured ? 'Processing...' : 
+                      countdown > 0 ? `Auto-capture in ${countdown}s` : 
+                      'Ready to Scan'
+                    ) : 'Tap to Start Scanning'
+                  ) : 'Focusing...'}
                 </Text>
               </View>
             </TouchableOpacity>
