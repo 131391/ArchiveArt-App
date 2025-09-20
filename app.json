@@ -55,8 +55,7 @@
         {
           "iosUrlScheme": "com.googleusercontent.apps.245858141100-64maf1nnom0omlleevt52cudkepm5vgi"
         }
-      ],
-      "./plugins/withGoogleServices.js"
+      ]
     ],
     "experiments": {
       "typedRoutes": true
