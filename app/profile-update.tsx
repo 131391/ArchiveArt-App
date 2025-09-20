@@ -46,10 +46,46 @@ export default function ProfileUpdateScreen() {
   useEffect(() => {
     if (user) {
       setName(user.name || '');
-      setMobile(user.mobile || '');
+      // Remove +91 prefix if present, keep only 10 digits
+      const mobileNumber = user.mobile ? user.mobile.replace(/^\+91/, '').replace(/^\+/, '') : '';
+      setMobile(mobileNumber);
       setProfilePicture(user.profile_picture || null);
     }
   }, [user]);
+
+  // Fetch fresh profile data when component mounts
+  useEffect(() => {
+    const fetchProfileData = async () => {
+      try {
+        console.log('🔍 Fetching fresh profile data for update screen');
+        // The user data will be updated through AuthContext when needed
+      } catch (error) {
+        console.error('Error fetching profile data:', error);
+      }
+    };
+    
+    fetchProfileData();
+  }, []);
+
+  const handleNameChange = (text: string) => {
+    setName(text);
+    setNameError('');
+  };
+
+  const handleMobileChange = (text: string) => {
+    // Clean the input - remove all non-digit characters
+    const cleanedText = text.replace(/\D/g, '');
+    
+    // Limit to 10 digits for Indian mobile numbers
+    const limitedText = cleanedText.slice(0, 10);
+    
+    setMobile(limitedText);
+    setMobileError('');
+    
+    if (limitedText.length > 0 && !validateIndianMobile(limitedText)) {
+      setMobileError('Please enter a valid 10-digit mobile number');
+    }
+  };
 
   const validateForm = (): boolean => {
     let isValid = true;
@@ -127,9 +163,9 @@ export default function ProfileUpdateScreen() {
         name: name.trim(),
       };
 
-      // Add mobile if provided
+      // Add mobile if provided (add +91 prefix for Indian numbers)
       if (mobile.trim()) {
-        profileData.mobile = mobile.trim();
+        profileData.mobile = `+91${mobile.trim()}`;
       }
 
       // Add profile picture if selected and different from current
@@ -168,7 +204,9 @@ export default function ProfileUpdateScreen() {
     // Reset form to original values
     if (user) {
       setName(user.name || '');
-      setMobile(user.mobile || '');
+      // Remove +91 prefix if present, keep only 10 digits
+      const mobileNumber = user.mobile ? user.mobile.replace(/^\+91/, '').replace(/^\+/, '') : '';
+      setMobile(mobileNumber);
       setProfilePicture(user.profile_picture || null);
     }
     router.back();
@@ -247,27 +285,24 @@ export default function ProfileUpdateScreen() {
           <Text style={styles.sectionTitle}>Personal Information</Text>
 
           {/* Name Field */}
-          <View style={styles.inputContainer}>
-            <ModernTextInput
-              label="Full Name"
-              value={name}
-              onChangeText={setName}
-              placeholder="Enter your full name"
-              error={nameError}
-              autoCapitalize="words"
-              autoCorrect={false}
-            />
-          </View>
+          <ModernTextInput
+            icon="person"
+            placeholder="Full Name"
+            value={name}
+            onChangeText={handleNameChange}
+            error={nameError}
+            autoCapitalize="words"
+            autoCorrect={false}
+          />
 
           {/* Email Field (Read-only) */}
           <View style={styles.inputContainer}>
             <ModernTextInput
-              label="Email Address"
+              icon="mail"
+              placeholder="Email Address"
               value={user?.email || ''}
-              placeholder="Email address"
               editable={false}
               style={styles.readOnlyInput}
-              leftIcon="mail-outline"
             />
             <Text style={styles.readOnlyNote}>
               Email cannot be changed as it's unique to your account
@@ -275,18 +310,15 @@ export default function ProfileUpdateScreen() {
           </View>
 
           {/* Mobile Field */}
-          <View style={styles.inputContainer}>
-            <ModernTextInput
-              label="Mobile Number"
-              value={mobile}
-              onChangeText={setMobile}
-              placeholder="Enter your mobile number"
-              error={mobileError}
-              keyboardType="phone-pad"
-              maxLength={10}
-              leftIcon="call-outline"
-            />
-          </View>
+          <ModernTextInput
+            icon="call"
+            placeholder="Phone Number"
+            value={mobile}
+            onChangeText={handleMobileChange}
+            error={mobileError}
+            keyboardType="phone-pad"
+            maxLength={10}
+          />
         </View>
 
         {/* Action Buttons */}
@@ -441,16 +473,18 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   inputContainer: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
   readOnlyInput: {
-    backgroundColor: '#F1F5F9',
-    color: '#64748B',
+    backgroundColor: '#F8FAFC',
+    color: '#94A3B8',
+    borderColor: '#E2E8F0',
   },
   readOnlyNote: {
     fontSize: 12,
     color: '#64748B',
-    marginTop: 4,
+    marginTop: 8,
+    marginLeft: 16,
     fontStyle: 'italic',
   },
   actionButtons: {
