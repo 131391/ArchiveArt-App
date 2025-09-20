@@ -4,6 +4,7 @@ import AuthService from '@/services/AuthService';
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -247,13 +248,8 @@ export default function ScannerScreen() {
       const photo = await cameraRef.current.takePictureAsync({
         quality: 1.0, // Highest quality
         base64: false,
-        skipProcessing: false, // Enable processing for better quality
-        exif: true, // Include EXIF data for better image processing
-        additionalExif: {
-          // Add metadata for better image processing
-          'ImageDescription': 'ArchivArt Scanner Capture',
-          'Software': 'ArchivArt App',
-        },
+        skipProcessing: true, // Skip processing to get raw image like gallery
+        exif: false, // Don't include EXIF to match gallery behavior
       });
 
       console.log('📸 Photo captured:', {
@@ -262,12 +258,34 @@ export default function ScannerScreen() {
         height: photo?.height,
         exists: !!photo?.uri,
         quality: '1.0 (max)',
-        processing: 'enabled',
-        exif: 'included'
+        processing: 'skipped (raw)',
+        exif: 'excluded'
       });
 
       if (photo?.uri) {
-        await processImage(photo.uri);
+        // Preprocess the camera image to match gallery image format
+        console.log('🔄 Preprocessing camera image...');
+        const processedImage = await manipulateAsync(
+          photo.uri,
+          [
+            // Auto-rotate to correct orientation
+            { rotate: 0 },
+          ],
+          {
+            compress: 1.0, // Maximum quality - no compression
+            format: SaveFormat.JPEG,
+            base64: false,
+          }
+        );
+        
+        console.log('✅ Image preprocessed:', {
+          originalUri: photo.uri,
+          processedUri: processedImage.uri,
+          width: processedImage.width,
+          height: processedImage.height,
+        });
+        
+        await processImage(processedImage.uri);
       } else {
         throw new Error('Failed to capture photo');
       }
@@ -343,8 +361,8 @@ export default function ScannerScreen() {
         imageUri,
         quality: '1.0 (max)',
         source: 'camera',
-        processing: 'enabled',
-        exif: 'included'
+        processing: 'raw (like gallery)',
+        exif: 'excluded'
       });
 
       // Add timeout to prevent hanging - increased to 30 seconds
