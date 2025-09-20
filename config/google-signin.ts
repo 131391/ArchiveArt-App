@@ -85,6 +85,8 @@ export const signInWithGoogle = async () => {
     };
   } catch (error: any) {
     console.error('Google Sign-In error:', error);
+    console.error('Google Sign-In error code:', error.code);
+    console.error('Google Sign-In error message:', error.message);
     
     if (statusCodes) {
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
@@ -95,7 +97,24 @@ export const signInWithGoogle = async () => {
         throw new Error('Google Play Services not available');
       } else if (error.code === statusCodes.SIGN_IN_REQUIRED) {
         throw new Error('Sign in required');
+      } else if (error.code === statusCodes.DEVELOPER_ERROR) {
+        throw new Error('DEVELOPER_ERROR: Google Sign-In configuration issue. Please check your Google OAuth setup and ensure the SHA-1 fingerprint matches your production build.');
+      } else if (error.code === statusCodes.INTERNAL_ERROR) {
+        throw new Error('Internal error occurred during Google Sign-In. Please try again.');
+      } else if (error.code === statusCodes.NETWORK_ERROR) {
+        throw new Error('Network error. Please check your internet connection and try again.');
+      } else if (error.code === statusCodes.TIMEOUT) {
+        throw new Error('Google Sign-In request timed out. Please try again.');
       }
+    }
+    
+    // Handle specific error messages
+    if (error.message && error.message.includes('DEVELOPER_ERROR')) {
+      throw new Error('DEVELOPER_ERROR: Google Sign-In configuration issue. Please check your Google OAuth setup and ensure the SHA-1 fingerprint matches your production build.');
+    } else if (error.message && error.message.includes('Network')) {
+      throw new Error('Network error. Please check your internet connection and try again.');
+    } else if (error.message && error.message.includes('timeout')) {
+      throw new Error('Google Sign-In request timed out. Please try again.');
     }
     
     throw new Error(error.message || 'Google Sign-In failed');
@@ -187,6 +206,12 @@ export const completeGoogleAuthFlow = async () => {
         success: false,
         error: 'GOOGLE_SIGNIN_NOT_AVAILABLE',
         message: error.message,
+      };
+    } else if (error.message.includes('DEVELOPER_ERROR')) {
+      return {
+        success: false,
+        error: 'DEVELOPER_ERROR',
+        message: 'DEVELOPER_ERROR: Google Sign-In configuration issue. Please check your Google OAuth setup and ensure the SHA-1 fingerprint matches your production build.',
       };
     } else {
       return {

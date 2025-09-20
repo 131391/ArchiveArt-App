@@ -422,6 +422,8 @@ class AuthService {
           throw new Error('Google Play Services not available');
         } else if (authFlowResult.error === 'GOOGLE_SIGNIN_NOT_AVAILABLE') {
           throw new Error('Google Sign-In is not available in this environment. Please use a development build or production build.');
+        } else if (authFlowResult.error === 'DEVELOPER_ERROR') {
+          throw new Error('DEVELOPER_ERROR: Google Sign-In configuration issue. Please check your Google OAuth setup and ensure the SHA-1 fingerprint matches your production build.');
         } else {
           throw new Error(authFlowResult.message || 'Google Sign-In failed');
         }

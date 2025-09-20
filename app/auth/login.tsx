@@ -186,6 +186,8 @@ export default function LoginScreen() {
           showNotification('Account Disabled', 'Your account has been disabled. Please contact support.', 'error');
         } else if (error.message.includes('Google Sign-In is not available')) {
           showNotification('Google Sign-In Not Available', 'Google Sign-In is not available in Expo Go. Please use a development build or production build to test Google authentication.', 'error');
+        } else if (error.message.includes('DEVELOPER_ERROR')) {
+          showNotification('Google Login Failed', 'DEVELOPER_ERROR: Google Sign-In configuration issue. Please check your Google OAuth setup and ensure the SHA-1 fingerprint matches your production build.', 'error');
         } else {
           showNotification('Google Login Failed', error.message, 'error');
         }
