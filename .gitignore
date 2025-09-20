@@ -19,7 +19,6 @@ expo-env.d.ts
 *.mobileprovision
 
 # Build directories
-android/
 ios/
 build/
 dist/
@@ -54,8 +53,6 @@ yarn-error.*
 .env.development
 
 # Google Services files (contain sensitive data)
-google-services.json
-google-services-ios.plist
 GoogleService-Info.plist
 
 # API keys and secrets
