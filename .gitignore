@@ -68,3 +68,41 @@ secrets.json
 
 app-example
 archivart-app.apk
+
+# Backup and duplicate files
+*-backup.*
+*-arkitech.*
+*-old.*
+*-copy.*
+
+# Test and example files
+test-*.js
+test-*.ts
+*Example.*
+*example.*
+
+# Build artifacts
+android/build/
+ios/build/
+*.apk
+*.ipa
+*.aab
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+Thumbs.db
+.DS_Store
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Documentation that might be redundant
+*TROUBLESHOOTING*
+*TEST*
+*VALIDATION*
