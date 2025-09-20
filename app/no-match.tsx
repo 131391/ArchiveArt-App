@@ -37,8 +37,6 @@ export default function NoMatchScreen() {
           <View style={styles.iconBackground}>
             <View style={styles.cubeIcon}>
               <View style={styles.cubeFace} />
-              <View style={styles.cubeFace} />
-              <View style={styles.cubeFace} />
             </View>
             <View style={styles.xIcon}>
               <View style={styles.xLine1} />
@@ -73,6 +71,7 @@ export default function NoMatchScreen() {
         {/* Pagination Dots */}
         <View style={styles.paginationContainer}>
           <View style={styles.paginationDot} />
+          <View style={[styles.paginationDot, styles.paginationDotInactive]} />
           <View style={[styles.paginationDot, styles.paginationDotInactive]} />
           <View style={[styles.paginationDot, styles.paginationDotInactive]} />
         </View>
@@ -155,37 +154,39 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   cubeIcon: {
-    width: 40,
-    height: 40,
+    width: 50,
+    height: 50,
     position: 'relative',
   },
   cubeFace: {
     position: 'absolute',
-    width: 30,
-    height: 30,
+    width: 40,
+    height: 40,
     backgroundColor: '#4A90E2',
-    opacity: 0.7,
-    borderRadius: 4,
+    opacity: 0.8,
+    borderRadius: 6,
+    top: 5,
+    left: 5,
   },
   xIcon: {
     position: 'absolute',
-    width: 40,
-    height: 40,
+    width: 50,
+    height: 50,
     alignItems: 'center',
     justifyContent: 'center',
   },
   xLine1: {
     position: 'absolute',
-    width: 30,
-    height: 3,
+    width: 35,
+    height: 4,
     backgroundColor: '#FF4444',
     borderRadius: 2,
     transform: [{ rotate: '45deg' }],
   },
   xLine2: {
     position: 'absolute',
-    width: 30,
-    height: 3,
+    width: 35,
+    height: 4,
     backgroundColor: '#FF4444',
     borderRadius: 2,
     transform: [{ rotate: '-45deg' }],
@@ -238,10 +239,10 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     backgroundColor: '#4A90E2',
-    marginHorizontal: 4,
+    marginHorizontal: 3,
   },
   paginationDotInactive: {
-    backgroundColor: '#E0E0E0',
+    backgroundColor: '#D1D5DB',
   },
   actionContainer: {
     width: '100%',
@@ -249,19 +250,20 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   scanAgainButton: {
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 6,
+    marginHorizontal: 20,
   },
   scanAgainGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
+    paddingVertical: 18,
     paddingHorizontal: 24,
   },
   scanAgainText: {
