@@ -16,84 +16,85 @@ export default function NoMatchScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#667eea" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       
-      <LinearGradient
-        colors={['#667eea', '#764ba2']}
-        style={styles.gradient}
-      >
-        {/* Header Section */}
-        <View style={styles.header}>
+      {/* Header Section */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.replace('/scanner')}
+        >
+          <Ionicons name="arrow-back" size={24} color="#333333" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Scan Result</Text>
+        <View style={styles.placeholder} />
+      </View>
+
+      {/* Main Content */}
+      <View style={styles.content}>
+        {/* Error Icon */}
+        <View style={styles.iconContainer}>
+          <View style={styles.iconBackground}>
+            <View style={styles.cubeIcon}>
+              <View style={styles.cubeFace} />
+              <View style={styles.cubeFace} />
+              <View style={styles.cubeFace} />
+            </View>
+            <View style={styles.xIcon}>
+              <View style={styles.xLine1} />
+              <View style={styles.xLine2} />
+            </View>
+          </View>
+        </View>
+
+        {/* Text Content */}
+        <View style={styles.textContainer}>
+          <Text style={styles.title}>No Match Found</Text>
+          <Text style={styles.subtitle}>
+            We couldn't find any matching media for your scan. This could be because:
+          </Text>
+          
+          <View style={styles.reasonsList}>
+            <View style={styles.reasonItem}>
+              <Ionicons name="camera-outline" size={20} color="#666666" />
+              <Text style={styles.reasonText}>Low light or blur</Text>
+            </View>
+            <View style={styles.reasonItem}>
+              <Ionicons name="search-outline" size={20} color="#666666" />
+              <Text style={styles.reasonText}>Object not recognized</Text>
+            </View>
+            <View style={styles.reasonItem}>
+              <Ionicons name="wifi-outline" size={20} color="#666666" />
+              <Text style={styles.reasonText}>No internet connection</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Pagination Dots */}
+        <View style={styles.paginationContainer}>
+          <View style={styles.paginationDot} />
+          <View style={[styles.paginationDot, styles.paginationDotInactive]} />
+          <View style={[styles.paginationDot, styles.paginationDotInactive]} />
+        </View>
+
+        {/* Action Button */}
+        <View style={styles.actionContainer}>
           <TouchableOpacity
-            style={styles.backButton}
+            style={styles.scanAgainButton}
             onPress={() => router.replace('/scanner')}
           >
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            <LinearGradient
+              colors={['#4A90E2', '#7B68EE']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.scanAgainGradient}
+            >
+              <Text style={styles.scanAgainText}>Scan Again</Text>
+              <Ionicons name="camera" size={20} color="#FFFFFF" />
+            </LinearGradient>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Scan Result</Text>
-          <View style={styles.placeholder} />
         </View>
-
-        {/* Main Content */}
-        <View style={styles.content}>
-          {/* Illustration Container */}
-          <View style={styles.illustrationContainer}>
-            <View style={styles.iconContainer}>
-              <Ionicons name="search" size={60} color="#FFFFFF" />
-            </View>
-            <View style={styles.decorativeCircle1} />
-            <View style={styles.decorativeCircle2} />
-            <View style={styles.decorativeCircle3} />
-          </View>
-
-          {/* Text Content */}
-          <View style={styles.textContainer}>
-            <Text style={styles.title}>No Match Found</Text>
-            <Text style={styles.subtitle}>
-              We couldn't find any matching media for your scan. This could be because:
-            </Text>
-            
-            <View style={styles.reasonsList}>
-              <View style={styles.reasonItem}>
-                <Ionicons name="camera-outline" size={20} color="rgba(255, 255, 255, 0.8)" />
-                <Text style={styles.reasonText}>The image quality could be improved</Text>
-              </View>
-              <View style={styles.reasonItem}>
-                <Ionicons name="library-outline" size={20} color="rgba(255, 255, 255, 0.8)" />
-                <Text style={styles.reasonText}>The artwork isn't in our database yet</Text>
-              </View>
-              <View style={styles.reasonItem}>
-                <Ionicons name="flashlight-outline" size={20} color="rgba(255, 255, 255, 0.8)" />
-                <Text style={styles.reasonText}>Lighting conditions could be better</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Action Buttons */}
-          <View style={styles.actionsContainer}>
-            <TouchableOpacity
-              style={styles.primaryButton}
-              onPress={() => router.replace('/scanner')}
-            >
-              <LinearGradient
-                colors={['#FFFFFF', '#F8F9FA']}
-                style={styles.primaryButtonGradient}
-              >
-                <Ionicons name="camera" size={24} color="#667eea" />
-                <Text style={styles.primaryButtonText}>Try Again</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.secondaryButton}
-              onPress={() => router.replace('/welcome')}
-            >
-              <Ionicons name="home-outline" size={20} color="#FFFFFF" />
-              <Text style={styles.secondaryButtonText}>Go Home</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </LinearGradient>
+      </View>
     </View>
   );
 }
@@ -101,9 +102,7 @@ export default function NoMatchScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  gradient: {
-    flex: 1,
+    backgroundColor: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',
@@ -111,20 +110,20 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingTop: 50,
     paddingBottom: 20,
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
+    backgroundColor: '#FFFFFF',
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: '#333333',
     letterSpacing: 0.5,
   },
   placeholder: {
@@ -132,74 +131,80 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  illustrationContainer: {
-    position: 'relative',
+  iconContainer: {
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 40,
   },
-  iconContainer: {
+  iconBackground: {
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    backgroundColor: '#E3F2FD',
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 12,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  decorativeCircle1: {
-    position: 'absolute',
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    top: -20,
-    left: -20,
+  cubeIcon: {
+    width: 40,
+    height: 40,
+    position: 'relative',
   },
-  decorativeCircle2: {
+  cubeFace: {
     position: 'absolute',
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
-    top: -40,
-    left: -40,
+    width: 30,
+    height: 30,
+    backgroundColor: '#4A90E2',
+    opacity: 0.7,
+    borderRadius: 4,
   },
-  decorativeCircle3: {
+  xIcon: {
     position: 'absolute',
-    width: 240,
-    height: 240,
-    borderRadius: 120,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.03)',
-    top: -60,
-    left: -60,
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  xLine1: {
+    position: 'absolute',
+    width: 30,
+    height: 3,
+    backgroundColor: '#FF4444',
+    borderRadius: 2,
+    transform: [{ rotate: '45deg' }],
+  },
+  xLine2: {
+    position: 'absolute',
+    width: 30,
+    height: 3,
+    backgroundColor: '#FF4444',
+    borderRadius: 2,
+    transform: [{ rotate: '-45deg' }],
   },
   textContainer: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 30,
   },
   title: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: '#FFFFFF',
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#333333',
     marginBottom: 16,
     textAlign: 'center',
     letterSpacing: 0.5,
   },
   subtitle: {
     fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: '#666666',
     textAlign: 'center',
     lineHeight: 24,
     marginBottom: 32,
@@ -217,55 +222,53 @@ const styles = StyleSheet.create({
   },
   reasonText: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: '#666666',
     marginLeft: 12,
     flex: 1,
     lineHeight: 20,
   },
-  actionsContainer: {
+  paginationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 40,
+  },
+  paginationDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#4A90E2',
+    marginHorizontal: 4,
+  },
+  paginationDotInactive: {
+    backgroundColor: '#E0E0E0',
+  },
+  actionContainer: {
     width: '100%',
     paddingHorizontal: 20,
     paddingBottom: 40,
   },
-  primaryButton: {
-    borderRadius: 16,
+  scanAgainButton: {
+    borderRadius: 12,
     overflow: 'hidden',
-    marginBottom: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 10,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 6,
   },
-  primaryButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 18,
-    paddingHorizontal: 24,
-  },
-  primaryButtonText: {
-    color: '#667eea',
-    fontSize: 18,
-    fontWeight: '700',
-    marginLeft: 8,
-    letterSpacing: 0.5,
-  },
-  secondaryButton: {
+  scanAgainGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 16,
     paddingHorizontal: 24,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
-  secondaryButtonText: {
+  scanAgainText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
-    marginLeft: 8,
+    marginRight: 8,
     letterSpacing: 0.3,
   },
 });

@@ -4,13 +4,10 @@ import AuthService from '@/services/AuthService';
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
-import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, BackHandler, Dimensions, Easing, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-
-const { width, height } = Dimensions.get('window');
 
 export default function ScannerScreen() {
   const router = useRouter();
@@ -18,8 +15,6 @@ export default function ScannerScreen() {
   const [isReady, setIsReady] = useState(false);
   const [isTorchOn, setIsTorchOn] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
-  const [showWarning, setShowWarning] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
   const [hasAutoCaptured, setHasAutoCaptured] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -31,1319 +26,735 @@ export default function ScannerScreen() {
   const [cameraKey, setCameraKey] = useState(0);
   const [isReinitializing, setIsReinitializing] = useState(false);
   const [hasNavigatedAway, setHasNavigatedAway] = useState(false);
-  const [countdown, setCountdown] = useState(0);
 
-  // Cleanup function to prevent memory leaks
+  // Animated scan line
+  const scanAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(scanAnim, {
+          toValue: 1,
+          duration: 1500,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(scanAnim, {
+          toValue: 0,
+          duration: 1500,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, [scanAnim]);
+
+  useEffect(() => {
+    console.log('📷 Permission status:', permission);
+    if (!permission || !permission.granted) {
+      console.log('📷 Requesting camera permission...');
+      requestPermission();
+    } else {
+      console.log('📷 Camera permission granted');
+    }
+  }, [permission]);
+
+  useEffect(() => {
+    const onBackPress = () => {
+      try {
+        router.replace('/welcome');
+      } catch {
+        router.replace('/welcome');
+      }
+      return true;
+    };
+
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => sub.remove();
+  }, [router]);
+
+  // Auto-capture timer effect (run once when ready)
+  useEffect(() => {
+    if (isReady && cameraInitialized && !isScanning && !hasAutoCaptured && !hasNavigatedAway) {
+      // Give camera more time to stabilize on iOS - increased delay for production builds
+      const timer = setTimeout(() => {
+        console.log('⏰ Auto-capture timer triggered');
+        handleAutoCapture();
+      }, 3000); // Reduced to 3000ms but ensure camera is initialized
+      
+      setAutoCaptureTimer(timer);
+      
+      return () => {
+        if (timer) clearTimeout(timer);
+      };
+    }
+  }, [isReady, cameraInitialized, isScanning, hasAutoCaptured, hasNavigatedAway]);
+
+  // Cleanup timer on unmount
   useEffect(() => {
     return () => {
-      // Cleanup any pending timers when component unmounts
       if (autoCaptureTimer) {
         clearTimeout(autoCaptureTimer);
       }
     };
   }, [autoCaptureTimer]);
 
-  // Animation values
-  const scanLineAnim = useRef(new Animated.Value(0)).current;
-  const cornerPulseAnim = useRef(new Animated.Value(1)).current;
-  const focusDotAnim = useRef(new Animated.Value(1)).current;
-  const captureButtonAnim = useRef(new Animated.Value(1)).current;
-  const gridOpacityAnim = useRef(new Animated.Value(0.3)).current;
-
-  // Animation effects
-  useEffect(() => {
-    // Scanning line animation
-    const scanLineAnimation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(scanLineAnim, {
-          toValue: 1,
-          duration: 2000,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(scanLineAnim, {
-          toValue: 0,
-          duration: 2000,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-      ])
-    );
-
-    // Corner pulse animation
-    const cornerPulseAnimation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(cornerPulseAnim, {
-          toValue: 1.2,
-          duration: 1000,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(cornerPulseAnim, {
-          toValue: 1,
-          duration: 1000,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-      ])
-    );
-
-    // Focus dot breathing animation
-    const focusDotAnimation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(focusDotAnim, {
-          toValue: 1.5,
-          duration: 1500,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(focusDotAnim, {
-          toValue: 1,
-          duration: 1500,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-      ])
-    );
-
-    // Grid opacity animation
-    const gridAnimation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(gridOpacityAnim, {
-          toValue: 0.1,
-          duration: 2000,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(gridOpacityAnim, {
-          toValue: 0.3,
-          duration: 2000,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-      ])
-    );
-
-    // Start animations
-    scanLineAnimation.start();
-    cornerPulseAnimation.start();
-    focusDotAnimation.start();
-    gridAnimation.start();
-
-    return () => {
-      scanLineAnimation.stop();
-      cornerPulseAnimation.stop();
-      focusDotAnimation.stop();
-      gridAnimation.stop();
-    };
-  }, [scanLineAnim, cornerPulseAnim, focusDotAnim, gridOpacityAnim]);
-
-  // Handle back button - no automatic reset
+  // Reset camera state when screen comes into focus (e.g., returning from video player)
   useFocusEffect(
     useCallback(() => {
-      const onBackPress = () => {
-        if (isProcessing) {
-          return true; // Prevent back navigation during processing
-        }
-        return false;
-      };
+      console.log('📷 Scanner screen focused - hasNavigatedAway:', hasNavigatedAway);
 
-      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-      return () => subscription.remove();
-    }, [isProcessing])
+      // Only reset if we actually navigated away and came back
+      if (hasNavigatedAway) {
+        console.log('📷 Returning from another screen - resetting camera state');
+
+        // Reset all camera-related states
+        setIsReady(false);
+        setCameraInitialized(false);
+        setIsScanning(false);
+        setIsProcessing(false);
+        setProgress(0);
+        setHasAutoCaptured(false);
+        setRetryCount(0);
+
+        // Clear any existing timer
+        if (autoCaptureTimer) {
+          clearTimeout(autoCaptureTimer);
+          setAutoCaptureTimer(null);
+        }
+
+        // Set reinitializing state
+        setIsReinitializing(true);
+
+        // Force camera remount by changing key
+        setCameraKey(prev => prev + 1);
+
+        // Small delay to ensure camera can reinitialize properly
+        const resetTimer = setTimeout(() => {
+          setHasNavigatedAway(false); // Reset the flag
+          console.log('📷 Camera state reset completed');
+        }, 200);
+
+        return () => {
+          clearTimeout(resetTimer);
+        };
+      } else {
+        // First time loading or already on this screen
+        console.log('📷 First time loading or already on scanner screen');
+      }
+    }, [autoCaptureTimer, hasNavigatedAway])
   );
 
-  // Camera initialization
-  useEffect(() => {
-    if (permission?.granted) {
-      setIsReady(true);
-      setCameraInitialized(true);
-      // Start scanning automatically when camera is ready
-      setIsScanning(true);
-    }
-  }, [permission]);
+  const handleAutoCapture = async () => {
+    if (isScanning) return;
 
-  // Auto-capture with countdown - only once per session
-  useEffect(() => {
-    // Don't start auto-capture if there's an error, warning, or processing
-    if (isScanning && !hasAutoCaptured && !isProcessing && isReady && !showWarning && !errorMessage && progress === 0) {
-      console.log('📸 Starting auto-capture countdown...');
-      
-      // Start countdown from 5 seconds for better focus
-      setCountdown(5);
-      
-      // Countdown timer
-      const countdownInterval = setInterval(() => {
-        setCountdown(prev => {
-          if (prev <= 1) {
-            clearInterval(countdownInterval);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-      
-      // Auto-capture timer - only happens once
-      const timer = setTimeout(() => {
-        if (isScanning && !hasAutoCaptured && !isProcessing && isReady && !showWarning && !errorMessage && progress === 0) {
-          console.log('📸 Auto-capturing image...');
-          handleCapture();
-        } else {
-          console.log('📸 Auto-capture cancelled - conditions not met');
-        }
-        clearInterval(countdownInterval);
-      }, 5000); // Auto-capture after 5 seconds for better focus
-      
-      setAutoCaptureTimer(timer);
-      
-      return () => {
-        clearTimeout(timer);
-        clearInterval(countdownInterval);
-      };
-    } else {
-      setCountdown(0);
-      // Clear any existing timer if conditions are not met
-      if (autoCaptureTimer) {
-        clearTimeout(autoCaptureTimer);
-        setAutoCaptureTimer(null);
-      }
-    }
-  }, [isScanning, hasAutoCaptured, isProcessing, isReady, showWarning, errorMessage, progress]);
+    console.log('🤖 Auto-capturing image...');
+    setHasAutoCaptured(true);
+    await captureAndProcessImage();
+  };
 
-  const handleCapture = async () => {
-    if (!cameraRef.current || isProcessing || hasAutoCaptured || showWarning || errorMessage || progress > 0) {
-      console.log('📸 Capture blocked - conditions not met (processing or progress active)');
+  const captureAndProcessImage = async () => {
+    if (isScanning) return;
+    if (!permission?.granted || !isReady || !cameraInitialized) {
+      console.log('⏳ Camera not ready or permission not granted - isReady:', isReady, 'cameraInitialized:', cameraInitialized, 'permission:', permission?.granted);
       return;
     }
 
+    console.log('🔍 Starting scan process...');
+    setIsScanning(true);
+    setIsProcessing(true);
+    setProgress(0);
+    const progTimer = setInterval(() => {
+      setProgress((p) => (p < 90 ? p + 5 : p));
+    }, 200);
+
     try {
-      // Capture button press animation
-      Animated.sequence([
-        Animated.timing(captureButtonAnim, {
-          toValue: 0.8,
-          duration: 100,
-          useNativeDriver: true,
-        }),
-        Animated.timing(captureButtonAnim, {
-          toValue: 1,
-          duration: 100,
-          useNativeDriver: true,
-        }),
-      ]).start();
+      // Capture image then send as multipart/form-data
+      console.log('📸 Capturing image...');
+      const photo = await (async () => {
+        const cam = cameraRef.current;
+        if (!cam) {
+          console.log('❌ Camera ref is null - retrying in 1 second...');
+          // Wait a bit and try again
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          const retryCam = cameraRef.current;
+          if (!retryCam) {
+            console.log('❌ Camera ref still null after retry');
+            return null;
+          }
+          return retryCam;
+        }
+
+        try {
+          // For Expo Camera v16+, we need to use the correct API
+          let result = null;
+
+          // Debug: Log what methods are available on the camera ref
+          console.log('🔍 Camera ref type:', typeof cam);
+          console.log('🔍 Camera ref methods:', Object.getOwnPropertyNames(cam));
+          console.log('🔍 Camera ref prototype:', Object.getOwnPropertyNames(Object.getPrototypeOf(cam)));
+
+          // Try different method names that might be available
+          const possibleMethods = ['takePictureAsync', 'takePicture', 'captureAsync', 'capture'];
+
+          for (const methodName of possibleMethods) {
+            if (typeof cam[methodName] === 'function') {
+              console.log(`✅ Found method: ${methodName}`);
+              try {
+                result = await cam[methodName]({
+        quality: 0.8,
+        base64: false,
+                  exif: false
+                });
+                console.log(`✅ Camera capture successful using ${methodName}:`, result);
+                break;
+              } catch (methodError) {
+                console.log(`⚠️ Method ${methodName} failed:`, methodError);
+                continue;
+              }
+            }
+          }
+
+          if (!result) {
+            console.log('❌ No working camera capture method found');
+            return null;
+          }
+
+          return result;
+        } catch (error) {
+          console.log('❌ Camera capture error:', error);
+          return null;
+        }
+      })();
+
+      if (!photo || !('uri' in photo) || !photo.uri) {
+        console.log('❌ Failed to capture image - photo object:', photo);
+        console.log('❌ Camera state - isReady:', isReady, 'cameraInitialized:', cameraInitialized, 'permission granted:', permission?.granted);
+        console.log('🔄 Retry count:', retryCount, 'Max retries:', maxRetries);
+
+        // Retry logic with better state management
+        if (retryCount < maxRetries) {
+          console.log('🔄 Retrying capture in 2 seconds...');
+          setRetryCount(prev => prev + 1);
+          // Reset scanning state before retry
+          setIsScanning(false);
+          setIsProcessing(false);
+          clearInterval(progTimer);
+          setTimeout(() => {
+            captureAndProcessImage();
+          }, 2000);
+          return;
+        }
+
+        // Show centering warning only for camera capture issues
+        console.log('⚠️ Camera capture issue - centering warning');
+        return;
+      }
+
+      console.log('✅ Image captured successfully:', photo.uri);
+
+      // Use captured image directly; keep quality low to reduce size
+      const uploadUri = (photo as any).uri as string;
+
+      const form = new FormData();
+      form.append('threshold', '5');
+      // React Native FormData file object - using 'image' field name as per API
+      const file: any = { uri: uploadUri, name: 'scan.jpg', type: 'image/jpeg' };
+      // @ts-ignore - RN FormData supports { uri, name, type }
+      form.append('image', file);
+
+      const apiUrl = buildUrl(API_ENDPOINTS.MEDIA.MATCH);
+      console.log('🌐 Hitting API:', apiUrl);
+      console.log('📤 Request payload:', { threshold: '5', image: 'file object' });
+      console.log('🔐 MOCK_MODE:', API_CONFIG.MOCK_MODE);
+      console.log('🔐 BASE_URL:', API_CONFIG.BASE_URL);
+      
+      // Log FormData contents
+      console.log('📤 FormData prepared with image and threshold');
+
+      const res = await AuthService.authenticatedRequest(API_ENDPOINTS.MEDIA.MATCH, {
+        method: 'POST',
+        headers: {
+          // Let fetch set proper multipart boundary
+          Accept: 'application/json',
+        },
+        body: form as any,
+      });
+
+      console.log('📡 API Response Status:', res.status, res.statusText);
+      console.log('📡 API Response OK:', res.ok);
+      console.log('📡 API Response Type:', res.type);
+      console.log('📡 API Response URL:', res.url);
+      
+      try {
+        const headersObj: Record<string, string> = {};
+        res.headers.forEach((value, key) => {
+          headersObj[key] = value;
+        });
+        console.log('📡 API Response Headers:', JSON.stringify(headersObj, null, 2));
+      } catch (headerError) {
+        console.log('❌ Error reading response headers:', headerError);
+      }
+
+      // Try to get response text first to see raw response
+      let responseText = '';
+      try {
+        responseText = await res.clone().text();
+        console.log('📥 API Raw Response Text:', responseText);
+      } catch (textError) {
+        console.log('❌ Error reading response text:', textError);
+      }
+
+      const json = await res.json().catch((parseError) => {
+        console.log('❌ Failed to parse JSON response:', parseError);
+        console.log('❌ Raw response that failed to parse:', responseText);
+        return null;
+      });
+
+      console.log('📥 API Response JSON:', JSON.stringify(json, null, 2));
+      console.log('📥 API Response Type Check:', typeof json);
+      console.log('📥 API Response Keys:', json ? Object.keys(json) : 'null');
+
+      if (!res.ok || !json?.success) {
+        console.log('❌ API request failed or returned error');
+        setHasNavigatedAway(true);
+        try {
+          router.push('/no-match');
+          console.log('✅ Navigation to no-match successful');
+        } catch (navError) {
+          console.log('❌ Navigation error:', navError);
+          router.replace('/no-match');
+        }
+        return;
+      }
+
+      const match = json.match || (Array.isArray(json.matches) && json.matches.length > 0 ? json.matches[0] : null);
+      if (!match) {
+        console.log('❌ No matches found in response');
+        setHasNavigatedAway(true);
+        try {
+          router.push('/no-match');
+          console.log('✅ Navigation to no-match successful');
+        } catch (navError) {
+          console.log('❌ Navigation error:', navError);
+          router.replace('/no-match');
+        }
+        return;
+      }
+
+      console.log('✅ Match found:', match);
+      const mediaType = (match.media_type || '').toLowerCase();
+      console.log('🔍 Raw match data:', JSON.stringify(match, null, 2));
+      // Build full media URL - API returns file_path like "filename.mp4" or "/uploads/media/filename.mp4"
+      const mediaUrl = match.file_path
+        ? (match.file_path.startsWith('http')
+            ? match.file_path
+            : match.file_path.startsWith('/uploads/media/')
+            ? `${API_CONFIG.BASE_URL}${match.file_path}`
+            : `${API_CONFIG.BASE_URL}/uploads/media/${match.file_path}`)
+        : '';
+      console.log('🎬 Navigating to media player with:', { url: mediaUrl, type: mediaType });
+      console.log('🔍 Debug - file_path:', match.file_path, 'BASE_URL:', API_CONFIG.BASE_URL);
+      console.log('🔍 Debug - constructed mediaUrl:', mediaUrl);
+      console.log('🔍 Debug - mediaType:', mediaType);
+      
+      // Validate URL construction
+      try {
+        new URL(mediaUrl);
+        console.log('✅ URL validation passed:', mediaUrl);
+      } catch (urlError) {
+        console.log('❌ URL validation failed:', urlError);
+        console.log('❌ Invalid URL:', mediaUrl);
+        console.log('❌ file_path was:', match.file_path);
+        console.log('❌ BASE_URL was:', API_CONFIG.BASE_URL);
+      }
+
+      // Set flag to indicate we're navigating away
+      setHasNavigatedAway(true);
+      try {
+        router.push({ pathname: '/media-player', params: { url: mediaUrl, type: mediaType } });
+        console.log('✅ Navigation to media player successful');
+      } catch (navError) {
+        console.log('❌ Navigation error:', navError);
+        // Fallback navigation
+        router.replace({ pathname: '/media-player', params: { url: mediaUrl, type: mediaType } });
+      }
+    } catch (e) {
+      console.log('❌ Scan process error:', e);
+      setHasNavigatedAway(true);
+      router.push('/no-match');
+    } finally {
+      setIsScanning(false);
+      setIsProcessing(false);
+      setProgress(100);
+      clearInterval(progTimer);
+      console.log('🏁 Scan process completed');
+    }
+  };
+
+  const processSelectedImage = async (imageUri: string) => {
+    if (isScanning) return;
+
+    console.log('🔍 Starting API call with selected image...');
+    setIsScanning(true);
+
+    try {
+      const form = new FormData();
+      form.append('threshold', '5');
+      // React Native FormData file object - using 'image' field name as per API
+      const file: any = {
+        uri: imageUri,
+        name: 'selected.jpg',
+        type: 'image/jpeg'
+      };
+      // @ts-ignore - RN FormData supports { uri, name, type }
+      form.append('image', file);
+
+      const galleryApiUrl = buildUrl(API_ENDPOINTS.MEDIA.MATCH);
+      console.log('🌐 Hitting API with selected image:', galleryApiUrl);
+      console.log('📤 Request payload:', { threshold: '5', image: 'file object' });
 
       setIsProcessing(true);
-      setHasAutoCaptured(true);
-      
-      if (autoCaptureTimer) {
-        clearTimeout(autoCaptureTimer);
-      }
-
-      // Ensure camera is focused before capturing
-      console.log('📸 Ensuring camera focus before capture...');
-      if (cameraRef.current) {
-        // Small delay to ensure focus is locked
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
-
-      const photo = await cameraRef.current.takePictureAsync({
-        quality: 1.0, // Highest quality
-        base64: false,
-        skipProcessing: true, // Skip processing to get raw image like gallery
-        exif: false, // Don't include EXIF to match gallery behavior
-      });
-
-      console.log('📸 Photo captured:', {
-        uri: photo?.uri,
-        width: photo?.width,
-        height: photo?.height,
-        exists: !!photo?.uri,
-        quality: '1.0 (max)',
-        processing: 'skipped (raw)',
-        exif: 'excluded'
-      });
-
-      if (photo?.uri) {
-        // Preprocess the camera image to match gallery image format
-        console.log('🔄 Preprocessing camera image...');
-        const processedImage = await manipulateAsync(
-          photo.uri,
-          [
-            // Auto-rotate to correct orientation
-            { rotate: 0 },
-          ],
-          {
-            compress: 1.0, // Maximum quality - no compression
-            format: SaveFormat.JPEG,
-            base64: false,
-          }
-        );
-        
-        console.log('✅ Image preprocessed:', {
-          originalUri: photo.uri,
-          processedUri: processedImage.uri,
-          width: processedImage.width,
-          height: processedImage.height,
-        });
-        
-        await processImage(processedImage.uri);
-      } else {
-        throw new Error('Failed to capture photo');
-      }
-    } catch (error) {
-      console.error('Capture error:', error);
-      setIsProcessing(false);
-      setHasAutoCaptured(false);
-    }
-  };
-
-  const processImage = async (imageUri: string) => {
-    let progressInterval: NodeJS.Timeout | null = null;
-    let timeoutId: NodeJS.Timeout | null = null;
-    
-    try {
-      // CRITICAL: Stop all background scanning immediately when API call starts
-      console.log('🔍 Stopping background scanning for API call...');
-      setIsScanning(false);
-      setCountdown(0);
-      
-      // Clear any pending auto-capture timer
-      if (autoCaptureTimer) {
-        clearTimeout(autoCaptureTimer);
-        setAutoCaptureTimer(null);
-      }
-      
       setProgress(0);
+      const progTimer = setInterval(() => {
+        setProgress((p) => (p < 90 ? p + 5 : p));
+      }, 200);
+
+      const selectedImageApiUrl = buildUrl(API_ENDPOINTS.MEDIA.MATCH);
+      console.log('🌐 Hitting API (selected image):', selectedImageApiUrl);
+      console.log('🔐 MOCK_MODE:', API_CONFIG.MOCK_MODE);
+      console.log('🔐 BASE_URL:', API_CONFIG.BASE_URL);
       
-      // Simulate processing progress with better handling
-      progressInterval = setInterval(() => {
-        setProgress(prev => {
-          if (prev >= 80) {
-            return 80; // Stop at 80% until API call completes
-          }
-          return prev + 4;
-        });
-      }, 200) as unknown as NodeJS.Timeout;
+      // Log FormData contents for selected image
+      console.log('📤 FormData prepared with selected image and threshold');
 
-      const token = await AuthService.getAccessToken();
-      if (!token) {
-        throw new Error('No authentication token');
-      }
-
-      console.log('🔍 Processing image:', imageUri);
-      console.log('🔍 API endpoint:', buildUrl(API_ENDPOINTS.MEDIA.MATCH));
-      console.log('🔍 API base URL:', API_CONFIG.BASE_URL);
-      console.log('🔍 Token exists:', !!token);
-      console.log('🔍 FormData prepared with image');
-
-      // Clear progress interval before API call
-      if (progressInterval) {
-        clearInterval(progressInterval);
-        progressInterval = null;
-      }
-
-      setProgress(85); // Set to 85% when starting API call
-
-      const formData = new FormData();
-      formData.append('image', {
-        uri: imageUri,
-        type: 'image/jpeg',
-        name: 'scan.jpg',
-        fileName: 'scan.jpg',
-        // Ensure high quality image upload
-        quality: 1.0,
-      } as any);
-      
-      // Add additional metadata for better processing
-      formData.append('source', 'camera');
-      formData.append('quality', 'high');
-      
-      console.log('🔍 Processing camera image with enhanced settings:', {
-        imageUri,
-        quality: '1.0 (max)',
-        source: 'camera',
-        processing: 'raw (like gallery)',
-        exif: 'excluded'
+      const apiRes = await AuthService.authenticatedRequest(API_ENDPOINTS.MEDIA.MATCH, {
+        method: 'POST',
+        headers: {
+          // Let fetch set proper multipart boundary
+          Accept: 'application/json',
+        },
+        body: form as any,
       });
 
-      // Add timeout to prevent hanging - increased to 30 seconds
-      const controller = new AbortController();
-      timeoutId = setTimeout(() => {
-        console.log('🔍 Request timeout - aborting after 30 seconds');
-        controller.abort();
-      }, 30000) as unknown as NodeJS.Timeout; // 30 second timeout
-
-      console.log('🔍 Starting API request...');
-      setProgress(90); // Set to 90% when request is sent
-
-      // Test basic connectivity first (without AbortController to avoid conflicts)
+      console.log('📡 API Response Status (selected image):', apiRes.status, apiRes.statusText);
+      console.log('📡 API Response OK (selected image):', apiRes.ok);
+      console.log('📡 API Response Type (selected image):', apiRes.type);
+      console.log('📡 API Response URL (selected image):', apiRes.url);
+      
       try {
-        console.log('🔍 Testing basic connectivity...');
-        const testController = new AbortController();
-        const testTimeout = setTimeout(() => testController.abort(), 5000);
-        
-        const testResponse = await fetch(API_CONFIG.BASE_URL, {
-          method: 'GET',
-          signal: testController.signal,
+        const headersObj2: Record<string, string> = {};
+        apiRes.headers.forEach((value, key) => {
+          headersObj2[key] = value;
         });
-        clearTimeout(testTimeout);
-        console.log('🔍 Connectivity test response:', testResponse.status);
-      } catch (connectError) {
-        console.log('🔍 Connectivity test failed:', connectError);
-        // Continue with main request anyway
+        console.log('📡 API Response Headers (selected image):', JSON.stringify(headersObj2, null, 2));
+      } catch (headerError) {
+        console.log('❌ Error reading response headers (selected image):', headerError);
       }
 
-      // Go to main request with proper error handling
-      let response;
+      // Try to get response text first to see raw response
+      let responseText2 = '';
       try {
-        response = await fetch(buildUrl(API_ENDPOINTS.MEDIA.MATCH), {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            // Don't set Content-Type for FormData - let the browser set it with boundary
-          },
-          body: formData,
-          signal: controller.signal,
-        });
-      } catch (fetchError) {
-        // Handle fetch errors specifically
-        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-          console.log('🔍 Request was aborted due to timeout');
-          throw new Error('Request timed out after 30 seconds. The server may be slow or unavailable.');
-        }
-        throw fetchError; // Re-throw other errors
+        responseText2 = await apiRes.clone().text();
+        console.log('📥 API Raw Response Text (selected image):', responseText2);
+      } catch (textError) {
+        console.log('❌ Error reading response text (selected image):', textError);
       }
 
-      // Clear timeout since request completed
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-        timeoutId = null;
-      }
+      const json = await apiRes.json().catch((parseError) => {
+        console.log('❌ Failed to parse JSON response (selected image):', parseError);
+        console.log('❌ Raw response that failed to parse (selected image):', responseText2);
+        return null;
+      });
 
-      console.log('🔍 API response received - Status:', response.status);
-      console.log('🔍 API response ok:', response.ok);
-      console.log('🔍 Response headers:', Object.fromEntries(response.headers.entries()));
+      console.log('📥 API Response JSON (selected image):', JSON.stringify(json, null, 2));
+      console.log('📥 API Response Type Check (selected image):', typeof json);
+      console.log('📥 API Response Keys (selected image):', json ? Object.keys(json) : 'null');
 
-      setProgress(95); // Set to 95% when API call completes
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log('🔍 API response data:', result);
-        
-        setProgress(100); // Complete the progress
-        
-        // Check if match was found
-        if (result.success && result.match) {
-          // Match found - navigate to media player
-          console.log('🔍 Match found, navigating to media player');
-          console.log('🔍 Match data:', result.match);
-          
-          // Extract video URL from the match
-          const match = result.match;
-          const videoUrl = match.file_path ? `${API_CONFIG.BASE_URL}/uploads/media/${match.file_path}` : '';
-          const mediaType = match.media_type || 'video';
-          
-          console.log('🔍 Video URL:', videoUrl);
-          console.log('🔍 Media Type:', mediaType);
-          console.log('🔍 Full URL:', videoUrl);
-          
-          setTimeout(() => {
-            router.push({
-              pathname: '/media-player',
-              params: { 
-                mediaData: JSON.stringify(result),
-                imageUri: imageUri,
-                url: videoUrl,
-                type: mediaType
-              }
-            });
-          }, 500);
-        } else {
-          // No matches found - show warning (no auto-redirect)
-          console.log('🔍 No matches found, showing warning');
-          setErrorMessage(result.message || 'No matching media found');
-          setShowWarning(true);
-          setIsProcessing(false);
-          setHasAutoCaptured(false);
-          setProgress(0);
-          // No automatic timeout - user must manually tap "Try Again"
-        }
-      } else {
-        // Get error details from response
-        let errorMessage = 'Failed to process image';
+      if (!apiRes.ok || !json?.success) {
+        console.log('❌ API request failed or returned error');
+        setHasNavigatedAway(true);
         try {
-          const errorData = await response.json();
-          errorMessage = errorData.message || errorData.error || errorMessage;
-          console.error('🔍 API error response:', errorData);
-        } catch (parseError) {
-          console.error('🔍 Failed to parse error response:', parseError);
-          errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+          router.push('/no-match');
+          console.log('✅ Navigation to no-match successful');
+        } catch (navError) {
+          console.log('❌ Navigation error:', navError);
+          router.replace('/no-match');
         }
-        throw new Error(errorMessage);
+        return;
       }
-    } catch (error) {
-      console.error('🔍 Processing error:', error);
-      console.error('🔍 Error type:', error?.constructor?.name);
-      console.error('🔍 Error name:', (error as any)?.name);
-      console.error('🔍 Error message:', (error as any)?.message);
+
+      const match = json.match || (Array.isArray(json.matches) && json.matches.length > 0 ? json.matches[0] : null);
+      if (!match) {
+        console.log('❌ No matches found in response');
+        setHasNavigatedAway(true);
+        try {
+          router.push('/no-match');
+          console.log('✅ Navigation to no-match successful');
+        } catch (navError) {
+          console.log('❌ Navigation error:', navError);
+          router.replace('/no-match');
+        }
+        return;
+      }
+
+      console.log('✅ Match found:', match);
+      const mediaType = (match.media_type || '').toLowerCase();
+      console.log('🔍 Raw match data:', JSON.stringify(match, null, 2));
+      // Build full media URL - API returns file_path like "filename.mp4" or "/uploads/media/filename.mp4"
+      const mediaUrl = match.file_path
+        ? (match.file_path.startsWith('http')
+            ? match.file_path
+            : match.file_path.startsWith('/uploads/media/')
+            ? `${API_CONFIG.BASE_URL}${match.file_path}`
+            : `${API_CONFIG.BASE_URL}/uploads/media/${match.file_path}`)
+        : '';
+      console.log('🎬 Navigating to media player with:', { url: mediaUrl, type: mediaType });
+      console.log('🔍 Debug - file_path:', match.file_path, 'BASE_URL:', API_CONFIG.BASE_URL);
+      console.log('🔍 Debug - constructed mediaUrl:', mediaUrl);
+      console.log('🔍 Debug - mediaType:', mediaType);
       
-      // CRITICAL: Stop all scanning and timers immediately
+      // Validate URL construction
+      try {
+        new URL(mediaUrl);
+        console.log('✅ URL validation passed:', mediaUrl);
+      } catch (urlError) {
+        console.log('❌ URL validation failed:', urlError);
+        console.log('❌ Invalid URL:', mediaUrl);
+        console.log('❌ file_path was:', match.file_path);
+        console.log('❌ BASE_URL was:', API_CONFIG.BASE_URL);
+      }
+
+      // Set flag to indicate we're navigating away
+      setHasNavigatedAway(true);
+      router.push({ pathname: '/media-player', params: { url: mediaUrl, type: mediaType } });
+    } catch (e) {
+      console.log('❌ API call error with selected image:', e);
+      setHasNavigatedAway(true);
+      router.push('/no-match');
+    } finally {
       setIsScanning(false);
-      setHasAutoCaptured(false);
       setIsProcessing(false);
-      setProgress(0);
-      setCountdown(0);
-      
-      // Clear all intervals and timeouts
-      if (progressInterval) {
-        clearInterval(progressInterval);
-        progressInterval = null;
-      }
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-        timeoutId = null;
-      }
-      if (autoCaptureTimer) {
-        clearTimeout(autoCaptureTimer);
-        setAutoCaptureTimer(null);
-      }
-      
-      // Handle specific error types
-      let errorMsg = 'An error occurred while processing the image';
-      if (error instanceof Error) {
-        if (error.name === 'AbortError' || error.message.includes('aborted')) {
-          errorMsg = 'Request timed out after 30 seconds. The server may be slow or unavailable.';
-        } else if (error.message.includes('Network') || error.message.includes('fetch') || error.message.includes('network')) {
-          errorMsg = 'Network error. Please check your internet connection and try again.';
-        } else if (error.message.includes('token') || error.message.includes('auth') || error.message.includes('unauthorized')) {
-          errorMsg = 'Authentication error. Please login again.';
-        } else if (error.message.includes('Failed to process image') || error.message.includes('server')) {
-          errorMsg = 'Server error. Please try again or contact support.';
-        } else if (error.message.includes('timeout')) {
-          errorMsg = 'Request timed out. Please check your internet connection and try again.';
-        } else {
-          errorMsg = error.message || 'An unexpected error occurred';
-        }
-      } else if (typeof error === 'string') {
-        errorMsg = error;
-      }
-      
-      console.log('🔍 Setting error message:', errorMsg);
-      console.log('🔍 Scanner stopped due to error - no background scanning');
-      setErrorMessage(errorMsg);
-      setShowWarning(true);
-      // No automatic timeout - user must manually tap "Try Again"
+      setProgress(100);
+      // Clear any possible timer from above block
+      // We defensively clear multiple times; safe if undefined
+      try { /* noop */ } finally {}
+      console.log('🏁 Image picker API call completed');
     }
   };
 
-  const handleGalleryPick = async () => {
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: false, // Remove cropping - full screen capture
-        quality: 1.0, // Highest quality
-      });
-
-      if (!result.canceled && result.assets[0]) {
-        await processImage(result.assets[0].uri);
-      }
-    } catch (error) {
-      console.error('Gallery pick error:', error);
-    }
-  };
-
-  const toggleTorch = () => {
-    setIsTorchOn(!isTorchOn);
-  };
-
-  const resetScanner = () => {
-    setIsScanning(false);
-    setHasAutoCaptured(false);
-    setIsProcessing(false);
-    setProgress(0);
-    setRetryCount(0);
-    setCountdown(0);
-    setShowWarning(false);
-    setErrorMessage('');
-    
-    // Clear any pending auto-capture timer
-    if (autoCaptureTimer) {
-      clearTimeout(autoCaptureTimer);
-      setAutoCaptureTimer(null);
-    }
-    
-    // Don't automatically restart - wait for user to manually start scanning
-    console.log('🔄 Scanner reset - ready for manual restart');
-  };
-
-  const resetToFreshScanner = () => {
-    console.log('🔄 Resetting to fresh scanner state');
-    setIsScanning(false);
-    setHasAutoCaptured(false);
-    setIsProcessing(false);
-    setProgress(0);
-    setRetryCount(0);
-    setCountdown(0);
-    setShowWarning(false);
-    setErrorMessage('');
-    setIsReady(false);
-    
-    // Clear any pending auto-capture timer
-    if (autoCaptureTimer) {
-      clearTimeout(autoCaptureTimer);
-      setAutoCaptureTimer(null);
-    }
-    
-    // Don't automatically restart - wait for user to manually start scanning
-    console.log('🔄 Fresh scanner ready - waiting for manual start');
-  };
-
-  if (!permission) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.permissionContainer}>
-          <Text style={styles.permissionText}>Requesting camera permission...</Text>
-        </View>
-      </View>
-    );
-  }
-
-  if (!permission.granted) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.permissionContainer}>
-          <Text style={styles.permissionText}>Camera permission is required to scan images</Text>
-          <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
-            <Text style={styles.permissionButtonText}>Grant Permission</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
+  console.log('📷 Rendering scanner screen - permission:', permission?.granted, 'isReady:', isReady, 'cameraInitialized:', cameraInitialized);
 
   return (
     <AuthGuard>
       <View style={styles.container}>
-        {/* AR Camera View */}
+      <View style={styles.topBar}>
+        <TouchableOpacity onPress={() => router.replace('/welcome')} style={styles.topBtn}>
+          <Ionicons name="chevron-back" size={24} color="#fff" />
+        </TouchableOpacity>
+        <Text style={styles.appName}>ArchivArt</Text>
+        <View style={styles.topBtn} />
+      </View>
+      {permission?.granted ? (
+        <>
         <CameraView
           key={cameraKey}
-          style={styles.camera}
+            style={StyleSheet.absoluteFill}
+            onCameraReady={() => {
+              console.log('📷 Camera is ready');
+              // Minimal delay for better user experience
+              setTimeout(() => {
+                setIsReady(true);
+                setCameraInitialized(true);
+                setIsReinitializing(false);
+                console.log('📷 Camera ready state set to true and initialized');
+              }, 300);
+            }}
+            onMountError={(error) => {
+              console.log('❌ Camera mount error:', error);
+              setCameraInitialized(false);
+              console.log('⚠️ Camera capture issue - centering warning');
+            }}
+            autofocus="on"
+            enableTorch={isTorchOn}
           facing="back"
+            mode="picture"
+            pictureSize="1920x1080"
           ref={cameraRef}
-          onCameraReady={() => {
-            console.log('📸 Camera ready');
-            setIsReady(true);
-          }}
-          enableTorch={isTorchOn}
-          autofocus="on"
-          focusable={true}
-        >
-          {/* AR Overlay */}
-          <View style={styles.overlay}>
-            {/* Top Bar */}
-            <View style={styles.topBar}>
-              <TouchableOpacity 
-                style={styles.topCloseButton}
-                onPress={() => router.back()}
-              >
-                <View style={styles.closeButtonCircle}>
-                  <Ionicons name="close" size={22} color="white" />
-                </View>
-              </TouchableOpacity>
-              
-              <View style={styles.topRightButtons}>
-                <TouchableOpacity 
-                  style={styles.topButton}
-                  onPress={toggleTorch}
-                >
-                  <View style={styles.topButtonCircle}>
-                    <Ionicons 
-                      name={isTorchOn ? "flash" : "flash-off"} 
-                      size={20} 
-                      color="white" 
-                    />
-                  </View>
-                </TouchableOpacity>
-                
-                <TouchableOpacity style={styles.topButton}>
-                  <View style={styles.topButtonCircle}>
-                    <Ionicons name="help-circle" size={20} color="white" />
-                  </View>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Professional Scanner Overlay */}
-            <TouchableOpacity 
-              style={styles.scanningArea}
-              onPress={() => {
-                if (!isScanning && isReady && !isProcessing && !showWarning && !errorMessage && progress === 0) {
-                  console.log('📸 Starting scanning manually...');
-                  setIsScanning(true);
-                } else if (isScanning && !hasAutoCaptured && !isProcessing && isReady && !showWarning && !errorMessage && progress === 0) {
-                  console.log('📸 Manual capture during countdown...');
-                  handleCapture();
-                } else {
-                  console.log('📸 Tap ignored - scanner in processing or error state');
-                }
-              }}
-              activeOpacity={0.8}
-            >
-              {/* Dark Overlay with Cutout */}
-              <View style={styles.darkOverlay}>
-                <View style={styles.cutoutArea} />
-              </View>
-
-              {/* Scanner Frame */}
-              <View style={styles.scanFrame}>
-                {/* Professional Corner Brackets */}
-                <Animated.View style={[styles.cornerBracket, styles.topLeft, { transform: [{ scale: cornerPulseAnim }] }]} />
-                <Animated.View style={[styles.cornerBracket, styles.topRight, { transform: [{ scale: cornerPulseAnim }] }]} />
-                <Animated.View style={[styles.cornerBracket, styles.bottomLeft, { transform: [{ scale: cornerPulseAnim }] }]} />
-                <Animated.View style={[styles.cornerBracket, styles.bottomRight, { transform: [{ scale: cornerPulseAnim }] }]} />
-                
-                {/* Professional Scanning Line */}
+          />
+          <View style={styles.overlay} pointerEvents="box-none">
+            <View style={styles.frame} pointerEvents="none">
                 <Animated.View
                   style={[
-                    styles.scanningLine,
+                    styles.scanLine,
                     {
                       transform: [
                         {
-                          translateY: scanLineAnim.interpolate({
+                          translateY: scanAnim.interpolate({
                             inputRange: [0, 1],
-                            outputRange: [-120, 120],
+                          outputRange: [frameSize * 0.1, frameSize * 0.85],
                           }),
                         },
                       ],
-                    },
-                  ]}
-                />
-                
-                {/* Center Focus Indicator */}
-                <Animated.View 
-                  style={[
-                    styles.centerFocus,
-                    {
-                      transform: [{ scale: focusDotAnim }],
-                    }
-                  ]} 
-                />
-
-                {/* Auto-capture Countdown */}
-                {countdown > 0 && (
-                  <View style={styles.countdownContainer}>
-                    <Animated.View style={[styles.countdownCircle, { transform: [{ scale: focusDotAnim }] }]}>
-                      <Text style={styles.countdownText}>{countdown}</Text>
-                    </Animated.View>
-                  </View>
-                )}
-              </View>
-
-              {/* Status Indicator */}
-              <View style={styles.statusIndicator}>
-                <View style={[styles.statusDot, { 
-                  backgroundColor: errorMessage ? '#EF4444' : 
-                    showWarning ? '#F59E0B' : 
-                    isReady ? '#10B981' : '#F59E0B' 
-                }]} />
-                <Text style={styles.statusText}>
-                  {errorMessage ? 'Error - Tap Retry' :
-                    showWarning ? 'Warning - Check Message' :
-                    progress > 0 ? 'Processing Image...' :
-                    isReady ? (
-                      isScanning ? (
-                        hasAutoCaptured ? 'Processing...' : 
-                        countdown > 0 ? `Auto-capture in ${countdown}s` : 
-                        'Ready to Scan'
-                      ) : 'Tap to Start Scanning'
-                    ) : 'Focusing...'}
-                </Text>
-              </View>
-            </TouchableOpacity>
-
-            {/* Bottom Controls */}
+                    opacity: isScanning ? 1 : 0.6,
+                  },
+                ]}
+              >
+                <LinearGradient colors={["transparent", "rgba(37,117,252,0.9)", "transparent"]} style={{ flex: 1 }} />
+              </Animated.View>
+            </View>
             <View style={styles.bottomControls}>
               <TouchableOpacity 
-                style={styles.retakeButton}
-                onPress={resetScanner}
+                style={[styles.circleBtn, isScanning && { opacity: 0.6 }]}
+                disabled={isScanning || !cameraInitialized}
+                onPress={() => {
+                  console.log('📸 Manual capture triggered');
+                  setHasAutoCaptured(true); // Prevent auto-capture from interfering
+                  captureAndProcessImage();
+                }}
               >
-                <View style={styles.retakeIconContainer}>
-                  <Ionicons name="sparkles" size={20} color="white" />
-                </View>
-                <Text style={styles.retakeButtonText}>Retake</Text>
+                <Ionicons name="scan" size={28} color="#fff" />
               </TouchableOpacity>
-
               <TouchableOpacity 
-                style={styles.captureButton}
-                onPress={handleCapture}
-                disabled={isProcessing}
-              >
-                <Animated.View 
-                  style={[
-                    styles.captureButtonCircle,
-                    {
-                      transform: [{ scale: captureButtonAnim }],
-                    }
-                  ]}
-                >
-                  <Ionicons name="camera" size={24} color="white" />
-                </Animated.View>
-              </TouchableOpacity>
+                style={[styles.iconBtn, isScanning && { opacity: 0.6 }]}
+                disabled={isScanning}
+                onPress={async () => {
+                  if (isScanning) return;
 
+                  console.log('📁 Opening image picker...');
+
+                  // Request permissions first
+                  const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                  if (status !== 'granted') {
+                    console.log('❌ Media library permission denied');
+                    return;
+                  }
+
+                  console.log('✅ Media library permission granted');
+                  const res = await ImagePicker.launchImageLibraryAsync({
+                    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                    allowsEditing: false,
+                    quality: 0.8,
+                  });
+
+                  if (!res.canceled && res.assets?.[0]?.uri) {
+                    const selectedImage = res.assets[0];
+                    console.log('📁 Image selected from library:', selectedImage.uri);
+
+                    // Process selected image using the same function
+                    await processSelectedImage(selectedImage.uri);
+                  } else {
+                    console.log('📁 Image picker canceled or no image selected');
+                  }
+                }}
+              >
+                <Ionicons name="image" size={26} color="#fff" />
+              </TouchableOpacity>
               <TouchableOpacity 
-                style={styles.galleryButton}
-                onPress={handleGalleryPick}
+                style={[styles.iconBtn, { left: 24, right: undefined }]}
+                onPress={() => setIsTorchOn((v: boolean) => !v)}
+                accessibilityLabel="Toggle flash"
               >
-                <View style={styles.galleryIconContainer}>
-                  <Ionicons name="images" size={20} color="white" />
-                </View>
-                <Text style={styles.galleryButtonText}>Gallery</Text>
+                <Ionicons name={isTorchOn ? 'flash' : 'flash-off'} size={26} color="#fff" />
               </TouchableOpacity>
-            </View>
-
-            {/* Processing Overlay */}
             {isProcessing && (
-              <View style={styles.processingOverlay}>
-                <View style={styles.processingCard}>
-                  <View style={styles.processingIconContainer}>
-                    <ActivityIndicator size="large" color="#8B5CF6" />
-                  </View>
+                <View style={styles.processingBox}>
+                  <ActivityIndicator color="#fff" size="small" />
+                  <Text style={styles.processingText}>Processing… {progress}%</Text>
+              </View>
+            )}
+              {(!cameraInitialized || isReinitializing) && !isProcessing && (
+                <View style={styles.processingBox}>
+                  <ActivityIndicator color="#fff" size="small" />
                   <Text style={styles.processingText}>
-                    {progress >= 90 ? 'Analyzing artwork...' : 'Processing image...'}
+                    {isReinitializing ? 'Reinitializing camera...' : 'Initializing camera...'}
                   </Text>
-                  <View style={styles.progressContainer}>
-                    <View style={styles.progressBar}>
-                      <Animated.View style={[styles.progressFill, { width: `${progress}%` }]} />
-                    </View>
-                    <Text style={styles.progressText}>{progress}%</Text>
-                  </View>
-                  {progress >= 90 && (
-                    <TouchableOpacity 
-                      style={styles.cancelButton}
-                      onPress={() => {
-                        setIsProcessing(false);
-                        setHasAutoCaptured(false);
-                        setProgress(0);
-                      }}
-                    >
-                      <Text style={styles.cancelButtonText}>Cancel</Text>
-                    </TouchableOpacity>
-                  )}
                 </View>
+              )}
               </View>
-            )}
-
-            {/* Warning Overlay */}
-            {showWarning && (
-              <View style={styles.warningOverlay}>
-                <View style={styles.warningCard}>
-                  {/* Close Button */}
-                  <TouchableOpacity 
-                    style={styles.closeButton}
-                    onPress={() => {
-                      setShowWarning(false);
-                      setErrorMessage('');
-                    }}
-                  >
-                    <Ionicons name="close" size={24} color="#64748B" />
-                  </TouchableOpacity>
-                  
-                  <Ionicons 
-                    name={errorMessage.includes('No matching media found') || errorMessage.includes('No matches found') 
-                      ? "search" 
-                      : "warning"
-                    } 
-                    size={48} 
-                    color={errorMessage.includes('No matching media found') || errorMessage.includes('No matches found') 
-                      ? "#8B5CF6" 
-                      : "#F59E0B"
-                    } 
-                  />
-                  <Text style={styles.warningText}>
-                    {errorMessage.includes('No matching media found') || errorMessage.includes('No matches found') 
-                      ? 'No matches found' 
-                      : 'Processing Error'
-                    }
-                  </Text>
-                  <Text style={styles.warningSubtext}>
-                    {errorMessage.includes('No matching media found') || errorMessage.includes('No matches found')
-                      ? 'Try scanning a different image or artwork' 
-                      : errorMessage || 'An error occurred while processing the image'
-                    }
-                  </Text>
-                  <TouchableOpacity 
-                    style={styles.retryButton}
-                    onPress={resetScanner}
-                  >
-                    <LinearGradient
-                      colors={['#3B82F6', '#8B5CF6']}
-                      style={styles.retryButtonGradient}
-                    >
-                      <Ionicons 
-                        name={errorMessage.includes('No matching media found') || errorMessage.includes('No matches found') 
-                          ? "camera" 
-                          : "refresh"
-                        } 
-                        size={20} 
-                        color="white" 
-                      />
-                      <Text style={styles.retryButtonText}>
-                        {errorMessage.includes('No matching media found') || errorMessage.includes('No matches found') 
-                          ? 'Scan Again' 
-                          : 'Try Again'
-                        }
-                      </Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
           </View>
-        </CameraView>
+        </>
+      ) : (
+        <View style={[StyleSheet.absoluteFill, styles.permissionView]}>
+          <Text style={{ color: '#fff' }}>Camera permission is required.</Text>
+        </View>
+      )}
       </View>
     </AuthGuard>
   );
 }
 
+const { width } = Dimensions.get('window');
+const frameSize = width * 0.8;
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#000000',
-  },
-  camera: {
-    flex: 1,
-  },
-  overlay: {
-    flex: 1,
-    backgroundColor: 'transparent',
-  },
+  container: { flex: 1, backgroundColor: '#000' },
   topBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 50,
-    paddingBottom: 20,
-  },
-  topCloseButton: {
-    // No absolute positioning - let it flow naturally in the top bar
-  },
-  closeButtonCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    // Ensure perfect centering
-    display: 'flex',
-  },
-  topRightButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  topButton: {
-    zIndex: 1,
-  },
-  topButtonCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scanningArea: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  darkOverlay: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-  },
-  cutoutArea: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    width: 300,
-    height: 220,
-    marginTop: -110,
-    marginLeft: -150,
-    backgroundColor: 'transparent',
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  scanFrame: {
-    width: 300,
-    height: 220,
-    position: 'relative',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  cornerBracket: {
-    position: 'absolute',
-    width: 30,
-    height: 30,
-    borderColor: '#8B5CF6',
-    borderWidth: 4,
-  },
-  topLeft: {
-    top: -2,
-    left: -2,
-    borderRightWidth: 0,
-    borderBottomWidth: 0,
-    borderTopLeftRadius: 12,
-  },
-  topRight: {
-    top: -2,
-    right: -2,
-    borderLeftWidth: 0,
-    borderBottomWidth: 0,
-    borderTopRightRadius: 12,
-  },
-  bottomLeft: {
-    bottom: -2,
-    left: -2,
-    borderRightWidth: 0,
-    borderTopWidth: 0,
-    borderBottomLeftRadius: 12,
-  },
-  bottomRight: {
-    bottom: -2,
-    right: -2,
-    borderLeftWidth: 0,
-    borderTopWidth: 0,
-    borderBottomRightRadius: 12,
-  },
-  scanningLine: {
-    position: 'absolute',
-    width: 300,
-    height: 3,
-    backgroundColor: '#8B5CF6',
-    opacity: 0.9,
-    shadowColor: '#8B5CF6',
-    shadowOffset: {
-      width: 0,
-      height: 0,
-    },
-    shadowOpacity: 1,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  centerFocus: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: 'rgba(139, 92, 246, 0.8)',
-    position: 'absolute',
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.9)',
-  },
-  statusIndicator: {
-    position: 'absolute',
-    bottom: 120,
-    left: 0,
-    right: 0,
+    height: 64,
+    paddingTop: 18,
+    paddingHorizontal: 12,
     flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    marginHorizontal: 40,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
+    justifyContent: 'space-between',
+    zIndex: 2,
   },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#10B981',
-    marginRight: 8,
+  topBtn: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center' },
+  appName: { color: '#fff', fontSize: 18, fontWeight: '800' },
+  overlay: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  frame: {
+    width: frameSize,
+    height: frameSize,
+    borderColor: 'rgba(255,255,255,0.6)',
+    borderWidth: 2,
+    borderRadius: 16,
+    overflow: 'hidden',
   },
-  statusText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  countdownCircle: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: 'rgba(139, 92, 246, 0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 3,
-    borderColor: 'rgba(255, 255, 255, 0.8)',
-  },
-  instructionContainer: {
-    marginTop: 20,
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  instructionText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  instructionSubtext: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: '400',
-    textAlign: 'center',
-    marginTop: 4,
-  },
-  countdownContainer: {
-    position: 'absolute',
-    bottom: -60,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  countdownText: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: 'white',
-    textAlign: 'center',
-  },
-  countdownLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: 'rgba(255, 255, 255, 0.8)',
-    textAlign: 'center',
-    marginTop: 4,
-  },
+  scanLine: { position: 'absolute', left: 0, right: 0, height: 2, top: frameSize * 0.15 },
   bottomControls: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 40,
-    paddingBottom: 50,
-    paddingTop: 30,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: -5,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 10,
-  },
-  retakeButton: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  retakeIconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  retakeButtonText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  captureButton: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  captureButtonCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#8B5CF6',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#8B5CF6',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  galleryButton: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  galleryIconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  galleryButtonText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  processingOverlay: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  processingCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.98)',
-    borderRadius: 25,
-    padding: 35,
-    alignItems: 'center',
-    minWidth: 250,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 10,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 20,
-  },
-  processingIconContainer: {
-    marginBottom: 20,
-  },
-  processingText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1E293B',
-    marginBottom: 25,
-    textAlign: 'center',
-  },
-  progressContainer: {
+    bottom: 40,
     width: '100%',
     alignItems: 'center',
   },
-  progressBar: {
-    width: 200,
-    height: 6,
-    backgroundColor: '#E5E7EB',
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#8B5CF6',
-    borderRadius: 3,
-  },
-  progressText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#8B5CF6',
-    marginTop: 12,
-  },
-  cancelButton: {
-    marginTop: 16,
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    backgroundColor: '#EF4444',
-    borderRadius: 8,
-  },
-  cancelButtonText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  warningOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+  circleBtn: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderWidth: 3,
+    borderColor: 'rgba(255,255,255,0.6)',
+    alignItems: 'center',
     justifyContent: 'center',
-    alignItems: 'center',
   },
-  warningCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 20,
-    padding: 30,
-    alignItems: 'center',
-    minWidth: 200,
-  },
-  warningText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1E293B',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  warningSubtext: {
-    fontSize: 14,
-    color: '#64748B',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
+  iconBtn: { position: 'absolute', right: 24, bottom: 12 },
+  permissionView: { alignItems: 'center', justifyContent: 'center', backgroundColor: '#000' },
   retryButton: {
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  retryButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    gap: 8,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.4)',
   },
   retryButtonText: {
-    color: 'white',
-    fontSize: 16,
+    color: '#fff',
+    fontSize: 14,
     fontWeight: '600',
   },
-  closeButton: {
+  processingBox: {
     position: 'absolute',
-    top: 16,
-    right: 16,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    bottom: 120,
+    alignSelf: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 10,
+    gap: 10,
   },
-  permissionContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  permissionText: {
-    fontSize: 16,
-    color: '#64748B',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  permissionButton: {
-    backgroundColor: '#3B82F6',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  permissionButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  processingText: { color: '#fff', marginLeft: 8, fontWeight: '600' },
 });
