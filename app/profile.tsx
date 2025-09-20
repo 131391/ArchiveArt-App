@@ -68,12 +68,24 @@ export default function ProfileScreen() {
                 <Ionicons name="checkmark" size={12} color="#FFFFFF" />
               </View>
             </View>
-            <Text style={styles.userName}>
-              {user?.name || 'User'}
-            </Text>
-            <Text style={styles.userEmail}>
-              {user?.email || 'user@example.com'}
-            </Text>
+            
+            <View style={styles.userInfoContainer}>
+              <Text style={styles.userName}>
+                {user?.name || 'User'}
+              </Text>
+              <Text style={styles.userEmail}>
+                {user?.email || 'user@example.com'}
+              </Text>
+              
+              {/* Edit Profile Button */}
+              <TouchableOpacity 
+                style={styles.editProfileButton}
+                onPress={() => router.push('/profile-update')}
+              >
+                <Ionicons name="create-outline" size={16} color="#3B82F6" />
+                <Text style={styles.editProfileButtonText}>Edit Profile</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Stats Cards */}
@@ -167,6 +179,14 @@ export default function ProfileScreen() {
         onCancel={cancelLogout}
         type="warning"
       />
+
+      {/* Floating Edit Button */}
+      <TouchableOpacity 
+        style={styles.floatingEditButton}
+        onPress={() => router.push('/profile-update')}
+      >
+        <Ionicons name="create" size={24} color="#FFFFFF" />
+      </TouchableOpacity>
     </View>
   );
 }
@@ -188,6 +208,10 @@ const styles = StyleSheet.create({
   profileHeader: {
     alignItems: 'center',
     marginBottom: 30,
+  },
+  userInfoContainer: {
+    alignItems: 'center',
+    marginTop: 16,
   },
   avatarContainer: {
     position: 'relative',
@@ -234,6 +258,21 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#64748B',
     fontWeight: '500',
+    marginBottom: 12,
+  },
+  editProfileButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
+  },
+  editProfileButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#3B82F6',
   },
   statsContainer: {
     flexDirection: 'row',
@@ -334,5 +373,21 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#EF4444',
+  },
+  floatingEditButton: {
+    position: 'absolute',
+    bottom: 30,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#3B82F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
 });
