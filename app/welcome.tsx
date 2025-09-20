@@ -1,20 +1,14 @@
-import { getProfileImageUrl } from '@/constants/Api';
 import { useAuth } from '@/contexts/AuthContext';
-import { getAvatarProps } from '@/utils/avatarUtils';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import React from 'react';
 import { ActivityIndicator, Dimensions, Image, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 
 export default function WelcomeScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const { isAuthenticated, isLoading, user } = useAuth();
-  const [imageLoadError, setImageLoadError] = useState(false);
-
-  // Get avatar props using utility function
-  const avatarProps = user ? getAvatarProps(user) : null;
 
   // No automatic redirect - show profile when authenticated, login when not
 
@@ -40,28 +34,17 @@ export default function WelcomeScreen() {
 
         {/* Hero Section */}
         <View style={styles.heroSection}>
-          {/* Profile Image for Authenticated Users */}
-          {isAuthenticated && avatarProps && (
-            <View style={styles.profileImageContainer}>
-              <View style={styles.profileImageWrapper}>
-                {avatarProps.hasProfilePicture && !imageLoadError ? (
-                  <Image 
-                    source={{ uri: getProfileImageUrl(avatarProps.profilePictureUrl!) || '' }}
-                    style={styles.profileImage}
-                    onError={() => {
-                      setImageLoadError(true);
-                    }}
-                  />
-                ) : (
-                  <Image 
-                    source={avatarProps.defaultAvatarUrl}
-                    style={styles.profileImage}
-                  />
-                )}
-                <View style={styles.profileImageBorder} />
-              </View>
+          {/* App Logo */}
+          <View style={styles.logoContainer}>
+            <View style={styles.logoWrapper}>
+              <Image 
+                source={require('@/assets/images/ALogo-square.png')}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
+              <View style={styles.logoBorder} />
             </View>
-          )}
+          </View>
           
           <Text style={styles.title}>
             {isAuthenticated ? `Welcome back, ${user?.name || 'User'}!` : 'Unlock New Worlds'}
@@ -166,32 +149,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 40,
   },
-  profileImageContainer: {
+  logoContainer: {
     marginBottom: 12,
   },
-  profileImageWrapper: {
+  logoWrapper: {
     position: 'relative',
   },
-  profileImage: {
+  logoImage: {
     width: 80,
     height: 80,
     borderRadius: 40,
   },
-  profileInitialsContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#3B82F6',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  profileInitials: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    textAlign: 'center',
-  },
-  profileImageBorder: {
+  logoBorder: {
     position: 'absolute',
     top: -3,
     left: -3,
@@ -359,5 +328,6 @@ const styles = StyleSheet.create({
     color: '#1E293B',
   },
 });
+
 
 
