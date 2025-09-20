@@ -77,7 +77,7 @@ export const ModernTextInput: React.FC<ModernTextInputProps> = ({
           <Ionicons
             name={icon}
             size={20}
-            color={isFocused ? '#667eea' : error ? '#ff4757' : '#8e8e93'}
+            color={isFocused ? '#3B82F6' : error ? '#EF4444' : '#64748B'}
           />
         </View>
         
@@ -88,7 +88,7 @@ export const ModernTextInput: React.FC<ModernTextInputProps> = ({
         <TextInput
           style={styles.textInput}
           placeholder={placeholder}
-          placeholderTextColor="#8e8e93"
+          placeholderTextColor="#9CA3AF"
           value={value}
           onChangeText={onChangeText}
           secureTextEntry={secureTextEntry && !showPassword}
@@ -106,7 +106,7 @@ export const ModernTextInput: React.FC<ModernTextInputProps> = ({
             <Ionicons
               name={showPassword ? 'eye-off' : 'eye'}
               size={20}
-              color="#8e8e93"
+              color="#64748B"
             />
           </TouchableOpacity>
         )}
@@ -114,7 +114,7 @@ export const ModernTextInput: React.FC<ModernTextInputProps> = ({
       
       {error && (
         <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle" size={16} color="#ff4757" />
+          <Ionicons name="alert-circle" size={16} color="#EF4444" />
           <Text style={styles.errorText}>{error}</Text>
         </View>
       )}
@@ -125,47 +125,53 @@ export const ModernTextInput: React.FC<ModernTextInputProps> = ({
 const styles = StyleSheet.create({
   container: {
     marginBottom: 16,
+    marginHorizontal: 4, // Increase horizontal margin to prevent border cutoff
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: '#e9ecef',
-    paddingHorizontal: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 2, // Increase border width for better visibility
+    borderColor: '#E5E7EB',
+    paddingHorizontal: 14, // Slightly reduce internal padding to account for thicker border
     paddingVertical: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
     elevation: 2,
+    marginHorizontal: 2, // Add margin to the input container itself
   },
   inputContainerFocused: {
-    borderColor: '#667eea',
-    backgroundColor: '#ffffff',
-    shadowColor: '#667eea',
+    borderColor: '#3B82F6',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2, // Ensure focused state has same border width
+    shadowColor: '#3B82F6',
     shadowOpacity: 0.15,
-    shadowRadius: 12,
+    shadowRadius: 8,
     elevation: 4,
+    marginHorizontal: 2, // Ensure focused state has same margin
   },
   inputContainerError: {
-    borderColor: '#ff4757',
-    backgroundColor: '#fff5f5',
+    borderColor: '#EF4444',
+    backgroundColor: '#FEF2F2',
+    borderWidth: 2, // Ensure error state has same border width
+    marginHorizontal: 2, // Ensure error state has same margin
   },
   iconContainer: {
     marginRight: 12,
   },
   prefixText: {
     fontSize: 16,
-    color: '#2c3e50',
+    color: '#1E293B',
     fontWeight: '600',
     marginRight: 8,
   },
   textInput: {
     flex: 1,
     fontSize: 16,
-    color: '#2c3e50',
+    color: '#1E293B',
     fontWeight: '500',
   },
   eyeContainer: {
@@ -178,7 +184,7 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   errorText: {
-    color: '#ff4757',
+    color: '#EF4444',
     fontSize: 14,
     fontWeight: '500',
     marginLeft: 6,

@@ -45,7 +45,7 @@ export const API_CONFIG = {
   // BASE_URL: 'http://172.20.10.5:3000', // For emulator testing
   // BASE_URL: 'http://localhost:3000', // For local development
   // Enable mock mode for development when backend is not available
-  MOCK_MODE: process.env.API_MOCK_MODE === 'true' || false, // Using real APIs with production backend
+  MOCK_MODE: false, // Enable mock mode for testing
 };
 
 // API Endpoints organized by category
@@ -438,36 +438,101 @@ export async function checkUsernameAvailability(username: string): Promise<Usern
     };
   }
 
+  // Mock mode for testing
+  if (API_CONFIG.MOCK_MODE) {
+    console.log('🔐 Mock mode: Checking username availability for:', username);
+    
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Mock some common usernames that are "taken"
+    const takenUsernames = ['admin', 'user', 'test', 'john', 'jane', 'alex', 'mike', 'sarah', 'david', 'lisa'];
+    const isTaken = takenUsernames.includes(username.toLowerCase());
+    
+    if (isTaken) {
+      // Generate suggestions
+      const suggestions = [
+        `${username}123`,
+        `${username}_${Math.floor(Math.random() * 1000)}`,
+        `${username}${new Date().getFullYear()}`,
+        `my${username}`,
+        `${username}user`
+      ];
+      
+      return {
+        available: false,
+        suggestions: suggestions,
+        message: 'Username is already taken',
+        error: 'Username already exists'
+      };
+    } else {
+      return {
+        available: true,
+        suggestions: [],
+        message: 'Username is available',
+        error: undefined
+      };
+    }
+  }
+
   try {
     const url = `${buildUrl(API_ENDPOINTS.AUTH.CHECK_USERNAME)}?username=${encodeURIComponent(username.trim())}`;
     console.log('🔐 Checking username availability:', url);
+    
+    // Create a timeout controller for better compatibility
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
     
     const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
       },
+      signal: controller.signal,
     });
+    
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      console.error('🔐 Username check failed with status:', response.status);
+      return {
+        available: false,
+        suggestions: [],
+        message: `Server error (${response.status}). Please try again.`,
+        error: `HTTP ${response.status}`
+      };
+    }
 
     const data = await response.json();
     console.log('🔐 Username check response:', data);
 
-    if (!response.ok) {
-      return {
-        available: false,
-        suggestions: [],
-        message: data.error || 'Failed to check username availability',
-        error: data.error
-      };
-    }
-
     return data;
   } catch (error) {
     console.error('🔐 Username check error:', error);
+    
+    // Handle different types of errors
+    if (error instanceof Error) {
+      if (error.name === 'AbortError') {
+        return {
+          available: false,
+          suggestions: [],
+          message: 'Request timed out. Please check your connection and try again.',
+          error: 'Timeout'
+        };
+      } else if (error.message && error.message.includes('fetch')) {
+        return {
+          available: false,
+          suggestions: [],
+          message: 'Network error. Please check your internet connection.',
+          error: 'Network error'
+        };
+      }
+    }
+    
     return {
       available: false,
       suggestions: [],
-      message: 'Failed to check username availability',
+      message: 'Failed to check username availability. Please try again.',
       error: error instanceof Error ? error.message : 'Unknown error'
     };
   }

@@ -3,27 +3,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useRef } from 'react';
 import { Animated, Dimensions, Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-interface WarningModalProps {
+interface LoginSuccessModalProps {
   visible: boolean;
-  title: string;
-  message: string;
-  confirmText?: string;
-  cancelText?: string;
-  onConfirm: () => void;
-  onCancel: () => void;
-  type?: 'warning' | 'danger' | 'info';
+  onContinue: () => void;
 }
 
-export function WarningModal({
+export function LoginSuccessModal({
   visible,
-  title,
-  message,
-  confirmText = 'Confirm',
-  cancelText = 'Cancel',
-  onConfirm,
-  onCancel,
-  type = 'warning'
-}: WarningModalProps) {
+  onContinue
+}: LoginSuccessModalProps) {
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
@@ -92,52 +80,17 @@ export function WarningModal({
     }
   }, [visible]);
 
-  const getTypeConfig = () => {
-    switch (type) {
-      case 'warning':
-        return {
-          colors: ['#F59E0B', '#D97706'],
-          icon: 'warning',
-          bgColor: '#FFFBEB',
-          borderColor: '#FED7AA',
-        };
-      case 'danger':
-        return {
-          colors: ['#EF4444', '#DC2626'],
-          icon: 'alert-circle',
-          bgColor: '#FEF2F2',
-          borderColor: '#FECACA',
-        };
-      case 'info':
-        return {
-          colors: ['#3B82F6', '#2563EB'],
-          icon: 'information-circle',
-          bgColor: '#EFF6FF',
-          borderColor: '#BFDBFE',
-        };
-      default:
-        return {
-          colors: ['#F59E0B', '#D97706'],
-          icon: 'warning',
-          bgColor: '#FFFBEB',
-          borderColor: '#FED7AA',
-        };
-    }
-  };
-
-  const config = getTypeConfig();
-
   return (
     <Modal
       visible={visible}
       transparent
       animationType="none"
-      onRequestClose={onCancel}
+      onRequestClose={onContinue}
       statusBarTranslucent
     >
       <Pressable 
         style={styles.overlay}
-        onPress={onCancel}
+        onPress={onContinue}
       >
         <Animated.View 
           style={[
@@ -157,55 +110,39 @@ export function WarningModal({
                 }
               ]}
             >
-              {/* Gradient Header Bar */}
-              <LinearGradient
-                colors={['#3B82F6', '#8B5CF6']}
-                style={styles.gradientHeader}
-              />
-
               {/* Content */}
               <View style={styles.content}>
-                {/* Red Icon */}
+                {/* Green Success Icon */}
                 <Animated.View
                   style={[
                     styles.iconContainer,
                     { transform: [{ scale: iconScaleAnim }] }
                   ]}
                 >
-                  <View style={styles.redIcon}>
-                    <Ionicons name="log-out" size={24} color="#fff" />
+                  <View style={styles.greenIcon}>
+                    <Ionicons name="checkmark" size={32} color="#fff" />
                   </View>
                 </Animated.View>
 
                 {/* Title */}
-                <Text style={styles.title}>{title}</Text>
+                <Text style={styles.title}>Login Successful</Text>
 
                 {/* Message */}
-                <Text style={styles.message}>{message}</Text>
+                <Text style={styles.message}>Welcome back! You are now logged in.</Text>
 
-                {/* Action Buttons */}
-                <View style={styles.actions}>
-                  <TouchableOpacity 
-                    style={styles.logoutButton}
-                    onPress={onConfirm}
-                    activeOpacity={0.8}
+                {/* Continue Button */}
+                <TouchableOpacity 
+                  style={styles.continueButton}
+                  onPress={onContinue}
+                  activeOpacity={0.9}
+                >
+                  <LinearGradient
+                    colors={['#3B82F6', '#8B5CF6']}
+                    style={styles.continueButtonGradient}
                   >
-                    <Text style={styles.logoutButtonText}>{confirmText}</Text>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity 
-                    style={styles.cancelButton}
-                    onPress={onCancel}
-                    activeOpacity={0.9}
-                  >
-                    <LinearGradient
-                      colors={['#3B82F6', '#8B5CF6']}
-                      style={styles.cancelButtonGradient}
-                    >
-                      <Text style={styles.cancelButtonText}>{cancelText}</Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
-                </View>
+                    <Text style={styles.continueButtonText}>Continue to App</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
               </View>
             </Animated.View>
           </Pressable>
@@ -242,74 +179,54 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 15,
   },
-  gradientHeader: {
-    height: 4,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-  },
   content: {
-    padding: 24,
+    padding: 32,
     alignItems: 'center',
   },
   iconContainer: {
-    marginBottom: 16,
+    marginBottom: 20,
   },
-  redIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#EF4444',
+  greenIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#10B981',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
   },
   title: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: '700',
     color: '#1E293B',
     textAlign: 'center',
     marginBottom: 12,
   },
   message: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '500',
     color: '#64748B',
     textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 24,
+    lineHeight: 24,
+    marginBottom: 32,
   },
-  actions: {
-    flexDirection: 'row',
-    gap: 12,
+  continueButton: {
     width: '100%',
-  },
-  logoutButton: {
-    flex: 1,
-    height: 44,
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#EF4444',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoutButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#EF4444',
-  },
-  cancelButton: {
-    flex: 1.2,
-    height: 44,
-    borderRadius: 8,
+    height: 52,
+    borderRadius: 12,
     overflow: 'hidden',
   },
-  cancelButtonGradient: {
+  continueButtonGradient: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cancelButtonText: {
-    fontSize: 14,
+  continueButtonText: {
+    fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
   },

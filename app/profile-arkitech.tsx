@@ -32,12 +32,33 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Cosmic Background */}
+      <View style={styles.cosmicBackground}>
+        <View style={[styles.planet, styles.planet1]} />
+        <View style={[styles.planet, styles.planet2]} />
+        <View style={[styles.planet, styles.planet3]} />
+        <View style={[styles.ring, styles.ring1]} />
+        <View style={[styles.ring, styles.ring2]} />
+      </View>
+
       <ScrollView 
         contentContainerStyle={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
       >
-        {/* Main Content */}
-        <View style={styles.mainContent}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => router.back()}
+          >
+            <Ionicons name="arrow-back" size={24} color="#1E293B" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Profile</Text>
+          <View style={styles.headerSpacer} />
+        </View>
+
+        {/* Main Content Card */}
+        <View style={styles.mainCard}>
           {/* Profile Header */}
           <View style={styles.profileHeader}>
             <View style={styles.avatarContainer}>
@@ -148,14 +169,97 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8FAFC',
   },
+  cosmicBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  planet: {
+    position: 'absolute',
+    borderRadius: 1000,
+    opacity: 0.6,
+  },
+  planet1: {
+    width: 120,
+    height: 120,
+    backgroundColor: '#3B82F6',
+    top: 100,
+    right: -60,
+  },
+  planet2: {
+    width: 80,
+    height: 80,
+    backgroundColor: '#8B5CF6',
+    bottom: 200,
+    left: -40,
+  },
+  planet3: {
+    width: 60,
+    height: 60,
+    backgroundColor: '#F59E0B',
+    top: Dimensions.get('window').height * 0.4,
+    right: 50,
+  },
+  ring: {
+    position: 'absolute',
+    borderRadius: 1000,
+    borderWidth: 2,
+    opacity: 0.3,
+  },
+  ring1: {
+    width: 160,
+    height: 160,
+    borderColor: '#3B82F6',
+    top: 80,
+    right: -80,
+  },
+  ring2: {
+    width: 100,
+    height: 100,
+    borderColor: '#8B5CF6',
+    bottom: 180,
+    left: -50,
+  },
   scrollContainer: {
     flexGrow: 1,
     paddingHorizontal: 20,
     paddingTop: 60,
     paddingBottom: 20,
   },
-  mainContent: {
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+  },
+  headerTitle: {
     flex: 1,
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1E293B',
+    textAlign: 'center',
+  },
+  headerSpacer: {
+    width: 40,
+  },
+  mainCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 24,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 10,
   },
   profileHeader: {
     alignItems: 'center',

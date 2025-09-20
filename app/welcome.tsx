@@ -1,4 +1,3 @@
-import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { useAuth } from '@/contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -10,6 +9,25 @@ export default function WelcomeScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const { isAuthenticated, isLoading, user } = useAuth();
+
+  // Function to generate user initials
+  const getUserInitials = (name: string): string => {
+    if (!name) return 'U';
+    
+    const nameParts = name.trim().split(' ');
+    if (nameParts.length === 1) {
+      return nameParts[0].charAt(0).toUpperCase();
+    }
+    
+    const firstName = nameParts[0];
+    const lastName = nameParts[nameParts.length - 1];
+    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+  };
+
+  // Function to get user's profile picture or null
+  const getUserProfilePicture = (): string | null => {
+    return user?.profilePicture || null;
+  };
 
   // No automatic redirect - show profile when authenticated, login when not
   useEffect(() => {
@@ -32,101 +50,118 @@ export default function WelcomeScreen() {
   }
 
   return (
-    <LinearGradient
-      colors={isDark ? ['#0F172A', '#1E293B', '#334155'] : ['#F8FAFC', '#E2E8F0', '#CBD5E1']}
-      style={styles.container}
-    >
-      {/* Background Pattern */}
-      <View style={styles.backgroundPattern}>
-        <View style={[styles.circle, styles.circle1]} />
-        <View style={[styles.circle, styles.circle2]} />
-        <View style={[styles.circle, styles.circle3]} />
-      </View>
+    <View style={styles.container}>
+      {/* Main Content */}
+      <View style={styles.mainContent}>
 
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.brandContainer}>
-          <View style={styles.logoContainer}>
-            <Image source={require('@/assets/images/ALogo.png')} style={styles.brandLogo} />
+        {/* Hero Section */}
+        <View style={styles.heroSection}>
+          {/* Profile Image for Authenticated Users */}
+          {isAuthenticated && (
+            <View style={styles.profileImageContainer}>
+              <View style={styles.profileImageWrapper}>
+                {getUserProfilePicture() ? (
+                  <Image 
+                    source={{ uri: getUserProfilePicture()! }}
+                    style={styles.profileImage}
+                    onError={() => {
+                      // If image fails to load, we could set a state to show initials instead
+                      console.log('Profile image failed to load, showing initials');
+                    }}
+                  />
+                ) : (
+                  <View style={styles.profileInitialsContainer}>
+                    <Text style={styles.profileInitials}>
+                      {getUserInitials(user?.name || 'User')}
+                    </Text>
+                  </View>
+                )}
+                <View style={styles.profileImageBorder} />
+              </View>
+            </View>
+          )}
+          
+          <Text style={styles.title}>
+            {isAuthenticated ? `Welcome back, ${user?.name || 'User'}!` : 'Unlock New Worlds'}
+          </Text>
+          <Text style={styles.titleAccent}>
+            {isAuthenticated ? 'Ready to explore new realities?' : 'with ArchivART'}
+          </Text>
+          
+          {/* AR Illustration */}
+          <View style={styles.arIllustration}>
+            <View style={styles.handContainer}>
+              <View style={styles.hand} />
+              <View style={styles.phone}>
+                <View style={styles.phoneScreen}>
+                  <View style={styles.arStructure}>
+                    <View style={[styles.cube, styles.cube1]} />
+                    <View style={[styles.cube, styles.cube2]} />
+                    <View style={[styles.cube, styles.cube3]} />
+                  </View>
+                </View>
+              </View>
+            </View>
+            <View style={[styles.floatingCube, styles.floatingCube1]} />
+            <View style={[styles.floatingCube, styles.floatingCube2]} />
+            <View style={[styles.floatingCube, styles.floatingCube3]} />
           </View>
-          <Text style={[styles.brandText, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>ArchivArt</Text>
+
+                 <Text style={styles.subtitle}>
+                   {isAuthenticated
+                     ? 'Continue your journey of discovering amazing art content with AI-powered scanning technology.'
+                     : 'Step into a new dimension where digital art blends seamlessly in your surroundings.'
+                   }
+                 </Text>
         </View>
-        <Text style={[styles.tagline, { color: isDark ? '#94A3B8' : '#64748B' }]}>AI-Powered Media Discovery</Text>
-        
-        {/* Profile Button in Top Right */}
+
+        {/* Actions */}
+        <View style={styles.actions}>
+          {isAuthenticated ? (
+            <TouchableOpacity 
+              style={styles.primaryButton}
+              onPress={() => router.push('/scanner')}
+            >
+              <LinearGradient
+                colors={['#3B82F6', '#8B5CF6']}
+                style={styles.buttonGradient}
+              >
+                <Ionicons name="camera" size={20} color="white" />
+                <Text style={styles.buttonText}>Start AR Experience</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity 
+              style={styles.primaryButton}
+              onPress={() => router.push('/auth/login')}
+            >
+              <LinearGradient
+                colors={['#3B82F6', '#8B5CF6']}
+                style={styles.buttonGradient}
+              >
+                <Text style={styles.buttonText}>Get Started</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          )}
+          
+          {!isAuthenticated && (
+            <TouchableOpacity style={styles.secondaryButton}>
+              <Text style={styles.secondaryButtonText}>Learn More</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Profile Button */}
         {isAuthenticated && (
           <TouchableOpacity 
             onPress={() => router.push('/profile')}
-            style={[styles.profileTopButton, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC' }]}
+            style={styles.profileButton}
           >
-            <Ionicons name="person-circle-outline" size={24} color={isDark ? '#3B82F6' : '#2563EB'} />
+            <Ionicons name="person-circle-outline" size={24} color="#3B82F6" />
           </TouchableOpacity>
         )}
       </View>
-
-      {/* Main Content */}
-      <View style={styles.content}>
-        {/* Hero Section */}
-        <View style={styles.heroSection}>
-          <View style={[styles.iconContainer, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC' }]}>
-            <Ionicons name="scan" size={60} color={isDark ? '#3B82F6' : '#2563EB'} />
-          </View>
-          <Text style={[styles.title, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>
-            {isAuthenticated ? 'Welcome Back!' : 'Discover Hidden'}
-          </Text>
-          <Text style={[styles.titleAccent, { color: isDark ? '#3B82F6' : '#2563EB' }]}>
-            {isAuthenticated ? 'Ready to Scan?' : 'Media Treasures'}
-          </Text>
-          <Text style={[styles.subtitle, { color: isDark ? '#94A3B8' : '#64748B' }]}>
-            {isAuthenticated 
-              ? 'Continue your journey of discovering amazing media content with AI-powered scanning technology.'
-              : 'Point your camera at any image and instantly discover related videos, audio, and multimedia content using advanced AI technology.'
-            }
-          </Text>
-        </View>
-
-        {/* Features */}
-        <View style={styles.featuresContainer}>
-          <View style={styles.feature}>
-            <View style={[styles.featureIcon, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
-              <Ionicons name="flash" size={24} color={isDark ? '#3B82F6' : '#2563EB'} />
-            </View>
-            <Text style={[styles.featureText, { color: isDark ? '#E2E8F0' : '#334155' }]}>Instant Recognition</Text>
-          </View>
-          <View style={styles.feature}>
-            <View style={[styles.featureIcon, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
-              <Ionicons name="musical-notes" size={24} color={isDark ? '#3B82F6' : '#2563EB'} />
-            </View>
-            <Text style={[styles.featureText, { color: isDark ? '#E2E8F0' : '#334155' }]}>Rich Media</Text>
-          </View>
-          <View style={styles.feature}>
-            <View style={[styles.featureIcon, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
-              <Ionicons name="shield-checkmark" size={24} color={isDark ? '#3B82F6' : '#2563EB'} />
-            </View>
-            <Text style={[styles.featureText, { color: isDark ? '#E2E8F0' : '#334155' }]}>Secure & Private</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Actions */}
-      <View style={styles.actions}>
-        {isAuthenticated ? (
-          // Authenticated User - Only Start Scanning Button
-          <PrimaryButton 
-            title="Start Scanning" 
-            onPress={() => router.push('/scanner')}
-            style={styles.primaryButton}
-          />
-        ) : (
-          // Non-authenticated User Actions - Only Sign In Button
-          <PrimaryButton 
-            title="Sign In / Create Account" 
-            onPress={() => router.push('/auth/login')} 
-            style={styles.primaryButton}
-          />
-        )}
-      </View>
-    </LinearGradient>
+    </View>
   );
 }
 
@@ -135,169 +170,211 @@ const { width, height } = Dimensions.get('window');
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 60,
-    paddingBottom: 40,
+    backgroundColor: '#F8FAFC',
   },
-  backgroundPattern: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  circle: {
-    position: 'absolute',
-    borderRadius: 1000,
-    opacity: 0.1,
-  },
-  circle1: {
-    width: 200,
-    height: 200,
-    backgroundColor: '#3B82F6',
-    top: -100,
-    right: -100,
-  },
-  circle2: {
-    width: 150,
-    height: 150,
-    backgroundColor: '#8B5CF6',
-    bottom: 200,
-    left: -75,
-  },
-  circle3: {
-    width: 100,
-    height: 100,
-    backgroundColor: '#06B6D4',
-    top: height * 0.3,
-    right: 50,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 40,
-    position: 'relative',
-  },
-  brandContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  logoContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 12,
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  brandLogo: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-  },
-  brandText: {
-    fontSize: 28,
-    fontWeight: '900',
-    letterSpacing: -0.5,
-  },
-  tagline: {
-    fontSize: 16,
-    fontWeight: '500',
-    textAlign: 'center',
-  },
-  profileTopButton: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  content: {
+  mainContent: {
     flex: 1,
-    justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 60,
+    paddingBottom: 20,
   },
   heroSection: {
     alignItems: 'center',
-    marginBottom: 50,
+    flex: 1,
+    justifyContent: 'center',
+    paddingVertical: 40,
   },
-  iconContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+  profileImageContainer: {
+    marginBottom: 20,
+  },
+  profileImageWrapper: {
+    position: 'relative',
+  },
+  profileImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+  },
+  profileInitialsContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#3B82F6',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 30,
-    shadowColor: '#3B82F6',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 8,
+  },
+  profileInitials: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+  profileImageBorder: {
+    position: 'absolute',
+    top: -3,
+    left: -3,
+    right: -3,
+    bottom: -3,
+    borderRadius: 43,
+    borderWidth: 3,
+    borderColor: '#3B82F6',
   },
   title: {
-    fontSize: 36,
-    fontWeight: '900',
+    fontSize: 32,
+    fontWeight: '800',
     textAlign: 'center',
-    letterSpacing: -1,
+    color: '#1E293B',
     marginBottom: 8,
   },
   titleAccent: {
-    fontSize: 36,
-    fontWeight: '900',
+    fontSize: 32,
+    fontWeight: '800',
     textAlign: 'center',
-    letterSpacing: -1,
-    marginBottom: 20,
+    color: '#3B82F6',
+    marginBottom: 40,
   },
-  subtitle: {
-    fontSize: 18,
-    fontWeight: '500',
-    textAlign: 'center',
-    lineHeight: 26,
-    paddingHorizontal: 20,
-  },
-  featuresContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingHorizontal: 20,
-  },
-  feature: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  featureIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+  arIllustration: {
+    width: 200,
+    height: 200,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 30,
+    position: 'relative',
   },
-  featureText: {
-    fontSize: 14,
-    fontWeight: '600',
+  handContainer: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  hand: {
+    width: 60,
+    height: 80,
+    backgroundColor: '#8B5CF6',
+    borderRadius: 30,
+    position: 'absolute',
+    zIndex: 1,
+  },
+  phone: {
+    width: 80,
+    height: 120,
+    backgroundColor: '#1E293B',
+    borderRadius: 12,
+    padding: 4,
+    marginTop: 20,
+    zIndex: 2,
+  },
+  phoneScreen: {
+    flex: 1,
+    backgroundColor: '#0F172A',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  arStructure: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cube: {
+    position: 'absolute',
+  },
+  cube1: {
+    width: 20,
+    height: 20,
+    backgroundColor: '#3B82F6',
+    top: 10,
+  },
+  cube2: {
+    width: 16,
+    height: 16,
+    backgroundColor: '#8B5CF6',
+    top: 20,
+    left: 10,
+  },
+  cube3: {
+    width: 12,
+    height: 12,
+    backgroundColor: '#F59E0B',
+    top: 30,
+    right: 5,
+  },
+  floatingCube: {
+    position: 'absolute',
+    borderRadius: 4,
+  },
+  floatingCube1: {
+    width: 12,
+    height: 12,
+    backgroundColor: '#3B82F6',
+    top: 20,
+    right: 20,
+  },
+  floatingCube2: {
+    width: 8,
+    height: 8,
+    backgroundColor: '#8B5CF6',
+    bottom: 40,
+    left: 10,
+  },
+  floatingCube3: {
+    width: 10,
+    height: 10,
+    backgroundColor: '#F59E0B',
+    top: 60,
+    left: 20,
+  },
+  subtitle: {
+    fontSize: 16,
+    fontWeight: '500',
     textAlign: 'center',
+    color: '#64748B',
+    lineHeight: 24,
+    paddingHorizontal: 20,
   },
   actions: {
     gap: 16,
   },
   primaryButton: {
-    marginBottom: 8,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  buttonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    gap: 8,
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
   secondaryButton: {
-    marginTop: 8,
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  secondaryButtonText: {
+    color: '#64748B',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  profileButton: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
     fontWeight: '600',
+    color: '#1E293B',
   },
 });
 

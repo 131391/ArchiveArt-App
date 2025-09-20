@@ -1,4 +1,4 @@
-import { ModernAlert } from '@/components/ui/ModernAlert';
+import { AutoDismissNotification } from '@/components/ui/AutoDismissNotification';
 import { ModernTextInput } from '@/components/ui/ModernTextInput';
 import { useAuth } from '@/contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,7 +11,6 @@ import {
     KeyboardAvoidingView,
     Platform,
     ScrollView,
-    StatusBar,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -24,7 +23,12 @@ export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
-  const [alert, setAlert] = useState({ visible: false, message: '', type: 'error' as 'success' | 'error' | 'warning' | 'info' });
+  const [notification, setNotification] = useState({ 
+    visible: false, 
+    type: 'success' as 'success' | 'error', 
+    title: '', 
+    message: '' 
+  });
   const { login, googleLogin } = useAuth();
   
   // Animated spinner for loading state
@@ -52,12 +56,12 @@ export default function LoginScreen() {
     outputRange: ['0deg', '360deg'],
   });
 
-  const showAlert = (message: string, type: 'success' | 'error' | 'warning' | 'info' = 'error') => {
-    setAlert({ visible: true, message, type });
+  const showNotification = (title: string, message: string, type: 'success' | 'error' = 'error') => {
+    setNotification({ visible: true, type, title, message });
   };
 
-  const hideAlert = () => {
-    setAlert({ visible: false, message: '', type: 'error' });
+  const hideNotification = () => {
+    setNotification({ visible: false, type: 'success', title: '', message: '' });
   };
 
   const validateEmail = (email: string): boolean => {
@@ -87,7 +91,7 @@ export default function LoginScreen() {
     // Clear any previous errors
     setEmailError('');
     setPasswordError('');
-    hideAlert();
+    hideNotification();
 
     let hasError = false;
 
@@ -134,16 +138,16 @@ export default function LoginScreen() {
           errorMessage = 'Too many login attempts. Please wait a few minutes before trying again.';
         }
         
-        showAlert(errorMessage, 'error');
+        showNotification('Login Failed', errorMessage, 'error');
       } else {
-        showAlert('Login successful! Welcome back!', 'success');
+        showNotification('Login Successful', 'Welcome back! You are now logged in.', 'success');
         // Small delay to show success message
         setTimeout(() => {
           router.replace('/welcome');
-        }, 1500);
+        }, 2000);
       }
     } catch (err) {
-      showAlert('An unexpected error occurred. Please try again.', 'error');
+      showNotification('Login Failed', 'An unexpected error occurred. Please try again.', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -151,7 +155,7 @@ export default function LoginScreen() {
 
   const handleGoogleLogin = async () => {
     setIsLoading(true);
-    hideAlert();
+    hideNotification();
     
     try {
       console.log('🔐 Google login button clicked');
@@ -167,35 +171,35 @@ export default function LoginScreen() {
           console.log('🔐 User cancelled Google login');
           return;
         } else if (error.message.includes('Network error')) {
-          showAlert('error', 'Connection Error', 'Please check your internet connection and try again.');
+          showNotification('Connection Error', 'Please check your internet connection and try again.', 'error');
         } else if (error.message.includes('Google Play Services')) {
-          showAlert('error', 'Google Services Error', 'Google Play Services is not available. Please update or install Google Play Services.');
+          showNotification('Google Services Error', 'Google Play Services is not available. Please update or install Google Play Services.', 'error');
         } else if (error.message.includes('Too many authentication attempts')) {
-          showAlert('error', 'Too Many Attempts', error.message);
+          showNotification('Too Many Attempts', error.message, 'error');
         } else if (error.message.includes('Invalid Google token')) {
-          showAlert('error', 'Authentication Error', 'Invalid Google authentication. Please try again.');
+          showNotification('Authentication Error', 'Invalid Google authentication. Please try again.', 'error');
         } else if (error.message.includes('User already exists')) {
-          showAlert('error', 'Account Exists', 'An account with this email already exists. Please use regular login instead.');
+          showNotification('Account Exists', 'An account with this email already exists. Please use regular login instead.', 'error');
         } else if (error.message.includes('Email not verified')) {
-          showAlert('error', 'Email Verification Required', 'Please verify your Google email address and try again.');
+          showNotification('Email Verification Required', 'Please verify your Google email address and try again.', 'error');
         } else if (error.message.includes('Account disabled')) {
-          showAlert('error', 'Account Disabled', 'Your account has been disabled. Please contact support.');
+          showNotification('Account Disabled', 'Your account has been disabled. Please contact support.', 'error');
         } else if (error.message.includes('Google Sign-In is not available')) {
-          showAlert('error', 'Google Sign-In Not Available', 'Google Sign-In is not available in Expo Go. Please use a development build or production build to test Google authentication.');
+          showNotification('Google Sign-In Not Available', 'Google Sign-In is not available in Expo Go. Please use a development build or production build to test Google authentication.', 'error');
         } else {
-          showAlert('error', 'Google Login Failed', error.message);
+          showNotification('Google Login Failed', error.message, 'error');
         }
       } else {
         // Success case
-        showAlert('success', 'Welcome Back!', 'You have been successfully logged in.');
+        showNotification('Login Successful', 'Welcome back! You are now logged in.', 'success');
         setTimeout(() => {
           router.replace('/welcome');
-        }, 1500);
+        }, 2000);
       }
     } catch (error) {
       console.error('🔐 Unexpected Google login error:', error);
       const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred during Google login';
-      showAlert('error', 'Login Failed', errorMessage);
+      showNotification('Login Failed', errorMessage, 'error');
     } finally {
       setIsLoading(false);
     }
@@ -204,36 +208,30 @@ export default function LoginScreen() {
   const { width, height } = Dimensions.get('window');
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container} 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <StatusBar barStyle="light-content" backgroundColor="#667eea" />
-      
-      <LinearGradient
-        colors={['#667eea', '#764ba2']}
-        style={styles.gradient}
+    <View style={styles.container}>
+      {/* Main Content */}
+      <KeyboardAvoidingView
+        style={styles.contentContainer}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <ScrollView 
+        <ScrollView
           contentContainerStyle={styles.scrollContainer}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Header Section */}
-          <View style={styles.header}>
-            <View style={styles.logoContainer}>
-              <Ionicons name="camera" size={40} color="#FFFFFF" />
-            </View>
-            <Text style={styles.welcomeText}>Welcome Back!</Text>
-            <Text style={styles.subtitleText}>Sign in to continue your journey</Text>
-          </View>
+          <View style={styles.mainContent}>
 
-          {/* Form Section */}
-          <View style={styles.formContainer}>
+            {/* Welcome Message */}
+            <View style={styles.welcomeSection}>
+              <Text style={styles.welcomeText}>Welcome Back</Text>
+              <Text style={styles.subtitleText}>Log in to ArchivART</Text>
+            </View>
+
+            {/* Form */}
             <View style={styles.form}>
               <ModernTextInput
                 icon="mail"
-                placeholder="Email address"
+                placeholder="Email"
                 value={email}
                 onChangeText={handleEmailChange}
                 keyboardType="email-address"
@@ -263,7 +261,7 @@ export default function LoginScreen() {
                 disabled={isLoading}
               >
                 <LinearGradient
-                  colors={isLoading ? ['#a8a8a8', '#888888'] : ['#667eea', '#764ba2']}
+                  colors={isLoading ? ['#94A3B8', '#64748B'] : ['#3B82F6', '#8B5CF6']}
                   style={styles.loginButtonGradient}
                 >
                   {isLoading ? (
@@ -274,46 +272,39 @@ export default function LoginScreen() {
                       <Text style={styles.loginButtonText}>Signing in...</Text>
                     </View>
                   ) : (
-                    <Text style={styles.loginButtonText}>Sign In</Text>
+                    <Text style={styles.loginButtonText}>Log In</Text>
                   )}
                 </LinearGradient>
               </TouchableOpacity>
             </View>
 
-            {/* Divider */}
-            <View style={styles.dividerContainer}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or continue with</Text>
-              <View style={styles.dividerLine} />
-            </View>
-
             {/* Social Login */}
-            <View style={styles.socialContainer}>
-              <TouchableOpacity 
-                style={[styles.socialButton, isLoading && styles.socialButtonDisabled]}
-                onPress={handleGoogleLogin}
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <Animated.View style={{ transform: [{ rotate: spin }] }}>
-                    <Ionicons name="refresh" size={20} color="#DB4437" />
-                  </Animated.View>
-                ) : (
-                  <Ionicons name="logo-google" size={24} color="#DB4437" />
-                )}
-                <Text style={[styles.socialButtonText, isLoading && styles.socialButtonTextDisabled]}>
-                  {isLoading ? 'Signing in...' : 'Google'}
-                </Text>
-              </TouchableOpacity>
+            <View style={styles.socialSection}>
+              <Text style={styles.socialText}>Or you log in with</Text>
+              
+              <View style={styles.socialButtons}>
+                <TouchableOpacity 
+                  style={[styles.socialButton, isLoading && styles.socialButtonDisabled]}
+                  onPress={handleGoogleLogin}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <Animated.View style={{ transform: [{ rotate: spin }] }}>
+                      <Ionicons name="refresh" size={20} color="#DB4437" />
+                    </Animated.View>
+                  ) : (
+                    <Ionicons name="logo-google" size={24} color="#DB4437" />
+                  )}
+                </TouchableOpacity>
 
-              <TouchableOpacity 
-                style={styles.socialButton}
-                onPress={() => {}}
-                disabled={isLoading}
-              >
-                <Ionicons name="logo-facebook" size={24} color="#1877F2" />
-                <Text style={styles.socialButtonText}>Facebook</Text>
-              </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.socialButton}
+                  onPress={() => {}}
+                  disabled={isLoading}
+                >
+                  <Ionicons name="logo-apple" size={24} color="#000000" />
+                </TouchableOpacity>
+              </View>
             </View>
 
             {/* Sign Up Link */}
@@ -325,80 +316,59 @@ export default function LoginScreen() {
             </View>
           </View>
         </ScrollView>
-      </LinearGradient>
+      </KeyboardAvoidingView>
 
-      {/* Modern Alert */}
-      <ModernAlert
-        visible={alert.visible}
-        message={alert.message}
-        type={alert.type}
-        onClose={hideAlert}
+      {/* Auto Dismiss Notification */}
+      <AutoDismissNotification
+        visible={notification.visible}
+        type={notification.type}
+        title={notification.title}
+        message={notification.message}
+        duration={3000}
+        onDismiss={hideNotification}
       />
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#F8FAFC',
   },
-  gradient: {
+  contentContainer: {
     flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 60,
+    paddingBottom: 20,
   },
   scrollContainer: {
     flexGrow: 1,
-    paddingBottom: 20,
-  },
-  header: {
-    alignItems: 'center',
-    paddingTop: 40,
-    paddingBottom: 30,
-    paddingHorizontal: 24,
-  },
-  logoContainer: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-    alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+  },
+  mainContent: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  welcomeSection: {
+    alignItems: 'center',
+    marginBottom: 30,
   },
   welcomeText: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: '#1E293B',
     marginBottom: 8,
     textAlign: 'center',
-    letterSpacing: 0.5,
   },
   subtitleText: {
     fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: '#64748B',
     textAlign: 'center',
     fontWeight: '500',
-    letterSpacing: 0.3,
-  },
-  formContainer: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    paddingTop: 30,
-    paddingHorizontal: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -6 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 12,
   },
   form: {
-    marginBottom: 24,
+    marginBottom: 30,
   },
   forgotPassword: {
     alignSelf: 'flex-end',
@@ -406,109 +376,76 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   forgotPasswordText: {
-    color: '#667eea',
-    fontSize: 15,
-    fontWeight: '600',
+    color: '#64748B',
+    fontSize: 14,
+    fontWeight: '500',
   },
   loginButton: {
-    borderRadius: 18,
+    borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#667eea',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 10,
   },
   loginButtonDisabled: {
-    shadowOpacity: 0.1,
-    elevation: 2,
+    opacity: 0.6,
   },
   loginButtonGradient: {
-    paddingVertical: 18,
+    paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
   loadingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
   },
   loginButtonText: {
     color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '700',
-    marginLeft: 8,
-    letterSpacing: 0.5,
-  },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 32,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1.5,
-    backgroundColor: '#E9ECEF',
-  },
-  dividerText: {
-    marginHorizontal: 20,
-    color: '#6C757D',
-    fontSize: 15,
-    fontWeight: '600',
-    letterSpacing: 0.3,
-  },
-  socialContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 40,
-  },
-  socialButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 2,
-    borderColor: '#E9ECEF',
-    borderRadius: 18,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    marginHorizontal: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  socialButtonText: {
-    marginLeft: 10,
     fontSize: 16,
     fontWeight: '600',
-    color: '#495057',
-    letterSpacing: 0.3,
+  },
+  socialSection: {
+    alignItems: 'center',
+    marginBottom: 30,
+  },
+  socialText: {
+    color: '#64748B',
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 20,
+  },
+  socialButtons: {
+    flexDirection: 'row',
+    gap: 20,
+  },
+  socialButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   socialButtonDisabled: {
     opacity: 0.6,
-    backgroundColor: '#F8F9FA',
-  },
-  socialButtonTextDisabled: {
-    color: '#6C757D',
   },
   signUpContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 30,
   },
   signUpText: {
-    color: '#6C757D',
-    fontSize: 16,
+    color: '#64748B',
+    fontSize: 14,
     fontWeight: '500',
   },
   signUpLink: {
-    color: '#667eea',
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 0.3,
+    color: '#3B82F6',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
 

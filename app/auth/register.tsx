@@ -1,4 +1,4 @@
-import { ModernAlert } from '@/components/ui/ModernAlert';
+import { AutoDismissNotification } from '@/components/ui/AutoDismissNotification';
 import { ModernTextInput } from '@/components/ui/ModernTextInput';
 import { checkUsernameAvailability, UsernameCheckResponse, validateEmail, validateIndianMobile, validatePassword, validatePasswordDetailed } from '@/constants/Api';
 import { useAuth } from '@/contexts/AuthContext';
@@ -7,16 +7,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-    Animated,
-    Dimensions,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  Animated,
+  Dimensions,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
@@ -50,151 +49,120 @@ export default function RegisterScreen() {
   const [usernameValidation, setUsernameValidation] = useState<UsernameCheckResponse | null>(null);
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
   
-  // Alert state
-  const [alert, setAlert] = useState<{
-    visible: boolean;
-    type: 'success' | 'error' | 'warning' | 'info';
-    title: string;
-    message: string;
-  }>({
-    visible: false,
-    type: 'error',
-    title: '',
-    message: '',
+  // Notification state
+  const [notification, setNotification] = useState({ 
+    visible: false, 
+    type: 'success' as 'success' | 'error', 
+    title: '', 
+    message: '' 
   });
   
-  // Animation values
-  const spinValue = useRef(new Animated.Value(0)).current;
-  
   const { register, googleLogin } = useAuth();
+  
+  // Animated spinner for loading state
+  const spinValue = useRef(new Animated.Value(0)).current;
 
-  // Animate spinner
+  // Spinner animation effect
   useEffect(() => {
     if (isLoading) {
-      Animated.loop(
+      const spinAnimation = Animated.loop(
         Animated.timing(spinValue, {
           toValue: 1,
           duration: 1000,
           useNativeDriver: true,
         })
-      ).start();
+      );
+      spinAnimation.start();
+      return () => spinAnimation.stop();
+    } else {
+      spinValue.setValue(0);
     }
-  }, [isLoading, spinValue]);
-  
+  }, [isLoading]);
+
   const spin = spinValue.interpolate({
     inputRange: [0, 1],
     outputRange: ['0deg', '360deg'],
   });
 
-  // Alert functions
-  const showAlert = (type: 'success' | 'error' | 'warning' | 'info', title: string, message: string) => {
-    setAlert({ visible: true, type, title, message });
+  const showNotification = (title: string, message: string, type: 'success' | 'error' = 'error') => {
+    setNotification({ visible: true, type, title, message });
   };
 
-  const hideAlert = () => {
-    setAlert(prev => ({ ...prev, visible: false }));
+  const hideNotification = () => {
+    setNotification({ visible: false, type: 'success', title: '', message: '' });
   };
 
-  // Validation functions
   const handleNameChange = (text: string) => {
     setName(text);
-    if (text.trim().length < 2) {
-      setNameError('Name must be at least 2 characters long');
-    } else {
-      setNameError('');
-    }
+    setNameError('');
   };
 
   const handleUsernameChange = async (text: string) => {
     setUsername(text);
-    setUsernameValidation(null);
-    
-    // Basic validation first
-    if (text.trim().length < 3) {
-      setUsernameError('Username must be at least 3 characters long');
-      return;
-    }
-
-    if (!/^[a-zA-Z0-9_]+$/.test(text)) {
-      setUsernameError('Username can only contain letters, numbers, and underscores');
-      return;
-    }
-
-    // Clear basic errors
     setUsernameError('');
-    
-    // Check username availability with API (debounced)
+    setUsernameValidation(null);
+
     if (text.trim().length >= 3) {
       setIsCheckingUsername(true);
       try {
-        const validation = await checkUsernameAvailability(text.trim());
-        console.log('🔐 Username validation result:', validation);
-        setUsernameValidation(validation);
+        console.log('🔍 Checking username availability for:', text.trim());
+        const result = await checkUsernameAvailability(text.trim());
+        console.log('🔍 Username check result:', result);
+        setUsernameValidation(result);
         
-        if (!validation.available) {
-          setUsernameError(validation.message);
-        } else {
-          setUsernameError('');
+        // Always show the message from the API response
+        if (!result.available) {
+          setUsernameError(result.message);
         }
       } catch (error) {
-        console.error('🔐 Username validation error:', error);
-        setUsernameError('Failed to check username availability');
+        console.error('🔍 Username check error:', error);
+        // Set a fallback error message if the API call fails
+        setUsernameError('Unable to verify username availability. Please try again.');
       } finally {
         setIsCheckingUsername(false);
       }
+    } else if (text.trim().length > 0 && text.trim().length < 3) {
+      setUsernameError('Username must be at least 3 characters long');
     }
   };
 
   const handleEmailChange = (text: string) => {
     setEmail(text);
-    if (text && !validateEmail(text)) {
+    setEmailError('');
+    
+    if (text.trim() && !validateEmail(text)) {
       setEmailError('Please enter a valid email address');
-    } else {
-      setEmailError('');
+    }
+  };
+
+  const handleMobileChange = (text: string) => {
+    // Clean the input - remove all non-digit characters
+    const cleanedText = text.replace(/\D/g, '');
+    
+    // Limit to 10 digits for Indian mobile numbers
+    const limitedText = cleanedText.slice(0, 10);
+    
+    setMobile(limitedText);
+    setMobileError('');
+    
+    if (limitedText.length > 0 && !validateIndianMobile(limitedText)) {
+      setMobileError('Please enter a valid 10-digit mobile number');
     }
   };
 
   const handlePasswordChange = (text: string) => {
     setPassword(text);
+    setPasswordError('');
     
-    if (text) {
-      const validation = validatePasswordDetailed(text);
-      setPasswordRequirements(validation.requirements);
-      
-      if (!validation.isValid) {
-        const passwordValidation = validatePassword(text);
-        setPasswordError(passwordValidation.errors.join(', '));
-      } else {
-        setPasswordError('');
+    // Check password requirements
+    const validation = validatePasswordDetailed(text);
+    setPasswordRequirements(validation.requirements);
+    
+    if (text.length > 0 && !validation.isValid) {
+      const basicValidation = validatePassword(text);
+      if (!basicValidation.isValid) {
+        setPasswordError(basicValidation.errors[0]);
       }
-    } else {
-      setPasswordRequirements({
-        minLength: false,
-        hasUppercase: false,
-        hasLowercase: false,
-        hasNumber: false,
-        hasSpecialChar: false,
-        notCommon: false,
-      });
-      setPasswordError('');
-    }
-  };
-
-  const handleMobileChange = (text: string) => {
-    // Remove +91 prefix if user types it, and remove any non-digit characters
-    let cleanedText = text.replace(/^\+91/, '').replace(/[^\d]/g, '');
-    
-    // Limit to 10 digits
-    if (cleanedText.length > 10) {
-      cleanedText = cleanedText.substring(0, 10);
-    }
-    
-    setMobile(cleanedText);
-    
-    if (cleanedText && !validateIndianMobile(cleanedText)) {
-      setMobileError('Please enter a valid 10-digit mobile number');
-    } else {
-      setMobileError('');
     }
   };
 
@@ -248,9 +216,9 @@ export default function RegisterScreen() {
       setPasswordError('Password is required');
       hasErrors = true;
     } else {
-      const passwordValidation = validatePassword(password);
-      if (!passwordValidation.isValid) {
-        setPasswordError(passwordValidation.errors.join(', '));
+      const validation = validatePassword(password);
+      if (!validation.isValid) {
+        setPasswordError(validation.errors[0]);
         hasErrors = true;
       }
     }
@@ -264,151 +232,107 @@ export default function RegisterScreen() {
     }
 
     if (hasErrors) {
-      showAlert('error', 'Validation Error', 'Please fix the errors above');
+      console.log('❌ Validation errors found, not proceeding with registration');
       return;
     }
 
+    console.log('✅ Validation passed, starting registration process');
+    setIsLoading(true);
+    hideNotification();
+    
     try {
-      setIsLoading(true);
-      console.log('🔐 Starting registration process');
+      // Prepare mobile number with +91 prefix
+      const mobileWithCountryCode = `+91${mobile}`;
       
       const error = await register({
         name: name.trim(),
         username: username.trim(),
         email: email.trim(),
         password,
-        mobile: `+91${mobile.trim()}`,
-      }) as Error | null;
-      
-      console.log('🔐 Registration page received error:', error);
-      console.log('🔐 Registration page error is truthy:', !!error);
+        mobile: mobileWithCountryCode,
+      });
       
       if (error) {
-        // Registration failed with error
         console.error('🔐 Registration error:', error);
-        console.error('🔐 Registration error type:', typeof error);
-        console.error('🔐 Registration error message:', error.message);
-        showAlert('error', 'Registration Failed', error.message);
+        showNotification('Registration Failed', error.message, 'error');
       } else {
-        // Registration successful
-        showAlert('success', 'Registration Successful', 'Your account has been created successfully!');
-        // Only navigate to welcome page on successful registration
+        showNotification('Registration Successful', 'Account created successfully! Welcome to ArchivART!', 'success');
         setTimeout(() => {
-      router.replace('/welcome');
-        }, 1500);
+          router.replace('/welcome');
+        }, 2000);
       }
-    } catch (error) {
-      console.error('🔐 Unexpected registration error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred during registration';
-      showAlert('error', 'Registration Failed', errorMessage);
+    } catch (err) {
+      console.error('🔐 Unexpected registration error:', err);
+      showNotification('Registration Failed', 'An unexpected error occurred. Please try again.', 'error');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleGoogleLogin = async () => {
+    setIsLoading(true);
+    hideNotification();
+    
     try {
-      setIsLoading(true);
       console.log('🔐 Google login button clicked');
       
-      const error = await googleLogin() as Error | null;
+      const error = await googleLogin();
       
       if (error) {
         console.error('🔐 Google login error:', error);
         
-        // Handle specific error cases
         if (error.message.includes('cancelled')) {
-          // User cancelled - don't show error message
           console.log('🔐 User cancelled Google login');
           return;
-        } else if (error.message.includes('Network error')) {
-          showAlert('error', 'Connection Error', 'Please check your internet connection and try again.');
-        } else if (error.message.includes('Google Play Services')) {
-          showAlert('error', 'Google Services Error', 'Google Play Services is not available. Please update or install Google Play Services.');
-        } else if (error.message.includes('Too many authentication attempts')) {
-          showAlert('error', 'Too Many Attempts', error.message);
-        } else if (error.message.includes('Invalid Google token')) {
-          showAlert('error', 'Authentication Error', 'Invalid Google authentication. Please try again.');
-        } else if (error.message.includes('User already exists')) {
-          showAlert('error', 'Account Exists', 'An account with this email already exists. Please use regular login instead.');
-        } else if (error.message.includes('Email not verified')) {
-          showAlert('error', 'Email Verification Required', 'Please verify your Google email address and try again.');
-        } else if (error.message.includes('Account disabled')) {
-          showAlert('error', 'Account Disabled', 'Your account has been disabled. Please contact support.');
         } else if (error.message.includes('Google Sign-In is not available')) {
-          showAlert('error', 'Google Sign-In Not Available', 'Google Sign-In is not available in Expo Go. Please use a development build or production build to test Google authentication.');
+          showNotification('Google Sign-In Not Available', 'Google Sign-In is not available in Expo Go. Please use a development build or production build to test Google authentication.', 'error');
         } else {
-          showAlert('error', 'Google Authentication Failed', error.message);
+          showNotification('Google Login Failed', error.message, 'error');
         }
       } else {
-        // Success case - could be login or registration
-        showAlert('success', 'Welcome!', 'You have been successfully authenticated with Google.');
+        showNotification('Login Successful', 'Welcome to ArchivART!', 'success');
         setTimeout(() => {
-      router.replace('/welcome');
-        }, 1500);
+          router.replace('/welcome');
+        }, 2000);
       }
     } catch (error) {
       console.error('🔐 Unexpected Google login error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred during Google authentication';
-      showAlert('error', 'Google Authentication Failed', errorMessage);
+      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred during Google login';
+      showNotification('Login Failed', errorMessage, 'error');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <LinearGradient
-      colors={['#667eea', '#764ba2']}
-      style={styles.container}
-    >
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-      
-      <ModernAlert
-        visible={alert.visible}
-        type={alert.type}
-        message={alert.title ? `${alert.title}\n\n${alert.message}` : alert.message}
-        onClose={hideAlert}
-      />
-      
-      <KeyboardAvoidingView
+    <View style={styles.container}>
+      {/* Main Content */}
+      <KeyboardAvoidingView 
+        style={styles.contentContainer}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardAvoidingView}
       >
-        <ScrollView
+        <ScrollView 
           contentContainerStyle={styles.scrollContainer}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Header */}
-          <View style={styles.header}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => router.back()}
-            >
-              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Create Account</Text>
-            <View style={styles.headerSpacer} />
-          </View>
+          <View style={styles.mainContent}>
 
-          {/* Main Content */}
-          <View style={styles.content}>
-            <View style={styles.welcomeContainer}>
-              <Text style={styles.welcomeTitle}>Join ArchivArt</Text>
-              <Text style={styles.welcomeSubtitle}>
-                Create your account to start exploring amazing art
-              </Text>
+            {/* Welcome Message */}
+            <View style={styles.welcomeSection}>
+              <Text style={styles.welcomeText}>Sign Up</Text>
+              <Text style={styles.subtitleText}>Join ArchivART</Text>
+              <Text style={styles.descriptionText}>Create your account</Text>
             </View>
 
             {/* Form */}
-      <View style={styles.form}>
+            <View style={styles.form}>
               <ModernTextInput
                 icon="person"
                 placeholder="Full Name"
                 value={name}
                 onChangeText={handleNameChange}
                 error={nameError}
-                autoCapitalize="words"
               />
               
               <ModernTextInput
@@ -416,81 +340,65 @@ export default function RegisterScreen() {
                 placeholder="Username"
                 value={username}
                 onChangeText={handleUsernameChange}
-                error={username && username.trim().length >= 3 ? '' : usernameError}
                 autoCapitalize="none"
+                error={usernameError}
               />
               
-              {/* Username Validation and Suggestions */}
-              {username && username.trim().length >= 3 && (() => {
-                console.log('🔐 Rendering username validation:', usernameValidation);
-                return (
-                <View style={styles.usernameValidationContainer}>
-                  {isCheckingUsername ? (
-                    <View style={styles.usernameCheckingContainer}>
-                      <Ionicons name="hourglass" size={16} color="#FFA500" />
-                      <Text style={styles.usernameCheckingText}>Checking availability...</Text>
-                    </View>
-                  ) : usernameValidation ? (
-                    <View>
-                      <View style={styles.usernameStatusContainer}>
-                        <Ionicons 
-                          name={usernameValidation.available ? "checkmark-circle" : "close-circle"} 
-                          size={16} 
-                          color={usernameValidation.available ? "#4CAF50" : "#F44336"} 
-                        />
-                        <Text style={[
-                          styles.usernameStatusText,
-                          { color: usernameValidation.available ? "#4CAF50" : "#F44336" }
-                        ]}>
-                          {usernameValidation.message}
-                        </Text>
-                      </View>
-                      
-                      {/* Username Suggestions */}
-                      {!usernameValidation.available && usernameValidation.suggestions && usernameValidation.suggestions.length > 0 && (
-                        <View style={styles.usernameSuggestionsContainer}>
-                          <Text style={styles.usernameSuggestionsTitle}>Suggested usernames:</Text>
-                          <View style={styles.usernameSuggestionsList}>
-                            {usernameValidation.suggestions.map((suggestion, index) => (
-                              <TouchableOpacity
-                                key={index}
-                                style={styles.usernameSuggestionItem}
-                                onPress={() => {
-                                  setUsername(suggestion);
-                                  handleUsernameChange(suggestion);
-                                }}
-                              >
-                                <Text style={styles.usernameSuggestionText}>{suggestion}</Text>
-                                <Ionicons name="arrow-forward" size={14} color="#667eea" />
-                              </TouchableOpacity>
-                            ))}
-        </View>
-      </View>
-                      )}
-                    </View>
-                  ) : null}
+              {/* Username validation status */}
+              {isCheckingUsername && (
+                <View style={styles.usernameChecking}>
+                  <Text style={styles.checkingText}>Checking username availability...</Text>
                 </View>
-                );
-              })()}
+              )}
+              
+              {usernameValidation && usernameValidation.available && !isCheckingUsername && (
+                <View style={styles.usernameAvailable}>
+                  <Text style={styles.availableText}>✓ Username is available</Text>
+                </View>
+              )}
+
+              {/* Username Suggestions - positioned right after username input */}
+              {usernameValidation && !usernameValidation.available && usernameValidation.suggestions && usernameValidation.suggestions.length > 0 && (
+                <View style={styles.usernameSuggestions}>
+                  <Text style={styles.suggestionsTitle}>💡 Suggested usernames:</Text>
+                  <View style={styles.suggestionsContainer}>
+                    {usernameValidation?.suggestions?.slice(0, 3).map((suggestion, index) => (
+                      <TouchableOpacity
+                        key={index}
+                        style={styles.suggestionItem}
+                        onPress={() => {
+                          setUsername(suggestion);
+                          setUsernameError('');
+                          setUsernameValidation(null);
+                          // Trigger validation for the new username
+                          handleUsernameChange(suggestion);
+                        }}
+                      >
+                        <Text style={styles.suggestionText}>{suggestion}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
               
               <ModernTextInput
                 icon="mail"
-                placeholder="Email Address"
+                placeholder="Email"
                 value={email}
                 onChangeText={handleEmailChange}
-                error={emailError}
                 keyboardType="email-address"
                 autoCapitalize="none"
+                error={emailError}
               />
               
               <ModernTextInput
                 icon="call"
-                placeholder="Mobile Number"
+                placeholder="Phone Number"
                 value={mobile}
                 onChangeText={handleMobileChange}
-                error={mobileError}
                 keyboardType="phone-pad"
                 prefix="+91"
+                error={mobileError}
               />
               
               <ModernTextInput
@@ -498,103 +406,85 @@ export default function RegisterScreen() {
                 placeholder="Password"
                 value={password}
                 onChangeText={handlePasswordChange}
-                error={passwordError}
                 secureTextEntry
+                error={passwordError}
               />
-              
+
               {/* Password Requirements */}
-              {password && (
-                <View style={styles.passwordRequirementsContainer}>
-                  <Text style={styles.passwordRequirementsTitle}>Password Requirements:</Text>
+              {password.length > 0 && (
+                <View style={styles.passwordRequirements}>
+                  <Text style={styles.requirementsTitle}>Password Requirements:</Text>
                   <View style={styles.requirementItem}>
                     <Ionicons 
                       name={passwordRequirements.minLength ? "checkmark-circle" : "close-circle"} 
                       size={16} 
-                      color={passwordRequirements.minLength ? "#4CAF50" : "#F44336"} 
+                      color={passwordRequirements.minLength ? "#10B981" : "#EF4444"} 
                     />
-                    <Text style={[
-                      styles.requirementText,
-                      { color: passwordRequirements.minLength ? "#4CAF50" : "#F44336" }
-                    ]}>
-                      Minimum 8 characters ({password.length >= 8 ? "✅" : "❌"} "{password}" has {password.length})
+                    <Text style={[styles.requirementText, { color: passwordRequirements.minLength ? "#10B981" : "#EF4444" }]}>
+                      Minimum 8 characters
                     </Text>
                   </View>
                   <View style={styles.requirementItem}>
                     <Ionicons 
                       name={passwordRequirements.hasUppercase ? "checkmark-circle" : "close-circle"} 
                       size={16} 
-                      color={passwordRequirements.hasUppercase ? "#4CAF50" : "#F44336"} 
+                      color={passwordRequirements.hasUppercase ? "#10B981" : "#EF4444"} 
                     />
-                    <Text style={[
-                      styles.requirementText,
-                      { color: passwordRequirements.hasUppercase ? "#4CAF50" : "#F44336" }
-                    ]}>
-                      At least 1 uppercase letter ({passwordRequirements.hasUppercase ? "✅" : "❌"} missing)
+                    <Text style={[styles.requirementText, { color: passwordRequirements.hasUppercase ? "#10B981" : "#EF4444" }]}>
+                      At least 1 uppercase letter
                     </Text>
                   </View>
                   <View style={styles.requirementItem}>
                     <Ionicons 
                       name={passwordRequirements.hasLowercase ? "checkmark-circle" : "close-circle"} 
                       size={16} 
-                      color={passwordRequirements.hasLowercase ? "#4CAF50" : "#F44336"} 
+                      color={passwordRequirements.hasLowercase ? "#10B981" : "#EF4444"} 
                     />
-                    <Text style={[
-                      styles.requirementText,
-                      { color: passwordRequirements.hasLowercase ? "#4CAF50" : "#F44336" }
-                    ]}>
-                      At least 1 lowercase letter ({passwordRequirements.hasLowercase ? "✅" : "❌"} has lowercase)
+                    <Text style={[styles.requirementText, { color: passwordRequirements.hasLowercase ? "#10B981" : "#EF4444" }]}>
+                      At least 1 lowercase letter
                     </Text>
                   </View>
                   <View style={styles.requirementItem}>
                     <Ionicons 
                       name={passwordRequirements.hasNumber ? "checkmark-circle" : "close-circle"} 
                       size={16} 
-                      color={passwordRequirements.hasNumber ? "#4CAF50" : "#F44336"} 
+                      color={passwordRequirements.hasNumber ? "#10B981" : "#EF4444"} 
                     />
-                    <Text style={[
-                      styles.requirementText,
-                      { color: passwordRequirements.hasNumber ? "#4CAF50" : "#F44336" }
-                    ]}>
-                      At least 1 number ({passwordRequirements.hasNumber ? "✅" : "❌"} missing)
+                    <Text style={[styles.requirementText, { color: passwordRequirements.hasNumber ? "#10B981" : "#EF4444" }]}>
+                      At least 1 number
                     </Text>
                   </View>
                   <View style={styles.requirementItem}>
                     <Ionicons 
                       name={passwordRequirements.hasSpecialChar ? "checkmark-circle" : "close-circle"} 
                       size={16} 
-                      color={passwordRequirements.hasSpecialChar ? "#4CAF50" : "#F44336"} 
+                      color={passwordRequirements.hasSpecialChar ? "#10B981" : "#EF4444"} 
                     />
-                    <Text style={[
-                      styles.requirementText,
-                      { color: passwordRequirements.hasSpecialChar ? "#4CAF50" : "#F44336" }
-                    ]}>
-                      At least 1 special character from @$!%*?& ({passwordRequirements.hasSpecialChar ? "✅" : "❌"} missing)
+                    <Text style={[styles.requirementText, { color: passwordRequirements.hasSpecialChar ? "#10B981" : "#EF4444" }]}>
+                      At least 1 special character (@$!%*?&)
                     </Text>
                   </View>
                   <View style={styles.requirementItem}>
                     <Ionicons 
                       name={passwordRequirements.notCommon ? "checkmark-circle" : "close-circle"} 
                       size={16} 
-                      color={passwordRequirements.notCommon ? "#4CAF50" : "#F44336"} 
+                      color={passwordRequirements.notCommon ? "#10B981" : "#EF4444"} 
                     />
-                    <Text style={[
-                      styles.requirementText,
-                      { color: passwordRequirements.notCommon ? "#4CAF50" : "#F44336" }
-                    ]}>
-                      Not a common password ({passwordRequirements.notCommon ? "✅" : "❌"} "{password}" is blocked)
+                    <Text style={[styles.requirementText, { color: passwordRequirements.notCommon ? "#10B981" : "#EF4444" }]}>
+                      Not a common password
                     </Text>
                   </View>
-      </View>
+                </View>
               )}
 
-              {/* Register Button */}
-        <TouchableOpacity 
+
+              <TouchableOpacity 
                 style={[styles.registerButton, isLoading && styles.registerButtonDisabled]}
                 onPress={handleRegister}
-          disabled={isLoading}
-        >
+                disabled={isLoading}
+              >
                 <LinearGradient
-                  colors={isLoading ? ['#a8a8a8', '#888888'] : ['#667eea', '#764ba2']}
+                  colors={isLoading ? ['#94A3B8', '#64748B'] : ['#3B82F6', '#8B5CF6']}
                   style={styles.registerButtonGradient}
                 >
                   {isLoading ? (
@@ -603,290 +493,259 @@ export default function RegisterScreen() {
                         <Ionicons name="refresh" size={20} color="#FFFFFF" />
                       </Animated.View>
                       <Text style={styles.registerButtonText}>Creating Account...</Text>
-          </View>
+                    </View>
                   ) : (
                     <Text style={styles.registerButtonText}>Create Account</Text>
                   )}
                 </LinearGradient>
-        </TouchableOpacity>
-        
-              {/* Login Link */}
-              <View style={styles.loginLinkContainer}>
-                <Text style={styles.loginLinkText}>Already have an account? </Text>
-                <TouchableOpacity onPress={() => router.replace('/auth/login')}>
-                  <Text style={styles.loginLinkButton}>Sign In</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Social Login */}
+            <View style={styles.socialSection}>
+              <Text style={styles.socialText}>Or you log in with</Text>
+              
+              <View style={styles.socialButtons}>
+                <TouchableOpacity 
+                  style={[styles.socialButton, isLoading && styles.socialButtonDisabled]}
+                  onPress={handleGoogleLogin}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <Animated.View style={{ transform: [{ rotate: spin }] }}>
+                      <Ionicons name="refresh" size={20} color="#DB4437" />
+                    </Animated.View>
+                  ) : (
+                    <Ionicons name="logo-google" size={24} color="#DB4437" />
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={styles.socialButton}
+                  onPress={() => {}}
+                  disabled={isLoading}
+                >
+                  <Ionicons name="logo-apple" size={24} color="#000000" />
                 </TouchableOpacity>
               </View>
             </View>
 
-            {/* Divider */}
-            <View style={styles.dividerContainer}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>OR</Text>
-              <View style={styles.dividerLine} />
+            {/* Sign In Link */}
+            <View style={styles.signInContainer}>
+              <Text style={styles.signInText}>Already have an account? </Text>
+              <TouchableOpacity onPress={() => router.push('/auth/login')}>
+                <Text style={styles.signInLink}>Log In</Text>
+              </TouchableOpacity>
             </View>
-
-            {/* Social Login */}
-            <View style={styles.socialContainer}>
-        <TouchableOpacity 
-                style={[styles.socialButton, styles.googleButton]}
-                onPress={handleGoogleLogin}
-          disabled={isLoading}
-        >
-                {isLoading ? (
-                  <View style={styles.socialLoadingContainer}>
-                    <Animated.View style={{ transform: [{ rotate: spin }] }}>
-                      <Ionicons name="refresh" size={20} color="#DB4437" />
-                    </Animated.View>
-                    <Text style={styles.socialButtonText}>Connecting...</Text>
           </View>
-                ) : (
-                  <>
-                    <Ionicons name="logo-google" size={24} color="#DB4437" />
-                    <Text style={styles.socialButtonText}>Continue with Google</Text>
-                  </>
-                )}
-        </TouchableOpacity>
-      </View>
-    </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </LinearGradient>
+
+      {/* Auto Dismiss Notification */}
+      <AutoDismissNotification
+        visible={notification.visible}
+        type={notification.type}
+        title={notification.title}
+        message={notification.message}
+        duration={3000}
+        onDismiss={hideNotification}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#F8FAFC',
   },
-  keyboardAvoidingView: {
+  contentContainer: {
     flex: 1,
+    paddingHorizontal: 28, // Further increase horizontal padding to prevent border cutoff
+    paddingTop: 60,
+    paddingBottom: 20,
   },
   scrollContainer: {
     flexGrow: 1,
-    paddingBottom: 20,
+    justifyContent: 'center',
+    paddingVertical: 20,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 50,
-    paddingHorizontal: 20,
-    paddingBottom: 10,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
+  mainContent: {
+    flex: 1,
     justifyContent: 'center',
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  headerSpacer: {
-    width: 40,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 20,
-  },
-  welcomeContainer: {
+  welcomeSection: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 30,
   },
-  welcomeTitle: {
-    fontSize: 32,
+  welcomeText: {
+    fontSize: 24,
     fontWeight: '800',
-    color: '#FFFFFF',
-    textAlign: 'center',
+    color: '#1E293B',
     marginBottom: 8,
-  },
-  welcomeSubtitle: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
     textAlign: 'center',
-    lineHeight: 22,
+  },
+  subtitleText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#3B82F6',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  descriptionText: {
+    fontSize: 16,
+    color: '#64748B',
+    textAlign: 'center',
+    fontWeight: '500',
   },
   form: {
-    marginBottom: 24,
+    marginBottom: 30,
+    paddingHorizontal: 4, // Add padding to form container to prevent border cutoff
   },
-  registerButton: {
-    marginTop: 24,
-    borderRadius: 12,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  registerButtonDisabled: {
-    shadowOpacity: 0.1,
-    elevation: 2,
-  },
-  registerButtonGradient: {
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  registerButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  loadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  loginLinkContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 20,
-  },
-  loginLinkText: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
-  },
-  loginLinkButton: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    textDecorationLine: 'underline',
-  },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 24,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  dividerText: {
-    marginHorizontal: 16,
-    fontSize: 14,
-    fontWeight: '600',
-    color: 'rgba(255, 255, 255, 0.8)',
-  },
-  socialContainer: {
-    marginBottom: 20,
-  },
-  socialButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  googleButton: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
-  },
-  socialButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#3C4043',
-    marginLeft: 12,
-  },
-  socialLoadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  passwordRequirementsContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 8,
+  passwordRequirements: {
+    marginTop: 12,
     marginBottom: 16,
+    padding: 16,
+    backgroundColor: 'rgba(59, 130, 246, 0.05)',
+    borderRadius: 12,
   },
-  passwordRequirementsTitle: {
+  requirementsTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#FFFFFF',
-    marginBottom: 12,
+    color: '#1E293B',
+    marginBottom: 8,
   },
   requirementItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   requirementText: {
     fontSize: 12,
-    fontWeight: '500',
     marginLeft: 8,
-    flex: 1,
+    fontWeight: '500',
   },
-  usernameValidationContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 12,
-    padding: 12,
+  usernameSuggestions: {
     marginTop: 8,
     marginBottom: 16,
+    padding: 12,
+    backgroundColor: 'rgba(59, 130, 246, 0.05)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.2)',
   },
-  usernameCheckingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  usernameCheckingText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#FFA500',
-    marginLeft: 8,
-  },
-  usernameStatusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  suggestionsTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1E293B',
     marginBottom: 8,
   },
-  usernameStatusText: {
-    fontSize: 12,
-    fontWeight: '500',
-    marginLeft: 8,
+  suggestionsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
   },
-  usernameSuggestionsContainer: {
+  suggestionItem: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#3B82F6',
+    borderRadius: 20,
+    shadowColor: '#3B82F6',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  suggestionText: {
+    fontSize: 13,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  usernameChecking: {
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  checkingText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#64748B',
+    fontStyle: 'italic',
+  },
+  usernameAvailable: {
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  availableText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#10B981',
+  },
+  registerButton: {
+    borderRadius: 16,
+    overflow: 'hidden',
     marginTop: 8,
   },
-  usernameSuggestionsTitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    marginBottom: 8,
+  registerButtonDisabled: {
+    opacity: 0.6,
   },
-  usernameSuggestionsList: {
-    gap: 6,
+  registerButtonGradient: {
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  usernameSuggestionItem: {
+  loadingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 8,
-    padding: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    gap: 8,
   },
-  usernameSuggestionText: {
-    fontSize: 12,
-    fontWeight: '500',
+  registerButtonText: {
     color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  socialSection: {
+    alignItems: 'center',
+    marginBottom: 30,
+  },
+  socialText: {
+    color: '#64748B',
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 20,
+  },
+  socialButtons: {
+    flexDirection: 'row',
+    gap: 20,
+  },
+  socialButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  socialButtonDisabled: {
+    opacity: 0.6,
+  },
+  signInContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  signInText: {
+    color: '#64748B',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  signInLink: {
+    color: '#3B82F6',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
-
-

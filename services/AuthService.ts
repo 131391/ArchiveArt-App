@@ -1,6 +1,6 @@
-import * as GoogleSignIn from '../config/google-signin';
 import { API_CONFIG, API_ENDPOINTS, buildUrl } from '@/constants/Api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as GoogleSignIn from '../config/google-signin';
 
 export interface User {
   id: number;
@@ -10,6 +10,7 @@ export interface User {
   mobile?: string;
   role: string;
   is_verified: boolean;
+  profilePicture?: string; // Optional profile picture URL
 }
 
 export interface AuthResponse {

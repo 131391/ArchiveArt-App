@@ -1,13 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useRef } from 'react';
 import {
-  Animated,
-  Dimensions,
-  Modal,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Animated,
+    Dimensions,
+    Modal,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 
 interface ModernAlertProps {
@@ -90,37 +90,37 @@ export const ModernAlert: React.FC<ModernAlertProps> = ({
       case 'success':
         return {
           icon: 'checkmark-circle' as const,
-          color: '#10ac84',
-          backgroundColor: '#d1f2eb',
-          borderColor: '#10ac84',
+          color: '#10B981',
+          backgroundColor: '#ECFDF5',
+          borderColor: '#10B981',
         };
       case 'error':
         return {
           icon: 'close-circle' as const,
-          color: '#ff4757',
-          backgroundColor: '#ffe6e6',
-          borderColor: '#ff4757',
+          color: '#EF4444',
+          backgroundColor: '#FEF2F2',
+          borderColor: '#EF4444',
         };
       case 'warning':
         return {
           icon: 'warning' as const,
-          color: '#ffa502',
-          backgroundColor: '#fff3cd',
-          borderColor: '#ffa502',
+          color: '#F59E0B',
+          backgroundColor: '#FFFBEB',
+          borderColor: '#F59E0B',
         };
       case 'info':
         return {
           icon: 'information-circle' as const,
-          color: '#3742fa',
-          backgroundColor: '#e3f2fd',
-          borderColor: '#3742fa',
+          color: '#3B82F6',
+          backgroundColor: '#EFF6FF',
+          borderColor: '#3B82F6',
         };
       default:
         return {
           icon: 'information-circle' as const,
-          color: '#3742fa',
-          backgroundColor: '#e3f2fd',
-          borderColor: '#3742fa',
+          color: '#3B82F6',
+          backgroundColor: '#EFF6FF',
+          borderColor: '#3B82F6',
         };
     }
   };
@@ -186,13 +186,13 @@ const styles = StyleSheet.create({
   },
   alertContainer: {
     width: width - 32,
-    borderRadius: 16,
-    borderWidth: 2,
+    borderRadius: 12,
+    borderWidth: 1,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 16,
-    elevation: 12,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
   },
   alertContent: {
     flexDirection: 'row',
@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
   },
   message: {
     fontSize: 14,
-    color: '#2c3e50',
+    color: '#1E293B',
     fontWeight: '500',
     lineHeight: 20,
   },
