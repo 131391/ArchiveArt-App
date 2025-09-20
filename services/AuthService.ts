@@ -63,7 +63,7 @@ class AuthService {
       await AsyncStorage.setItem('accessToken', accessToken);
       await AsyncStorage.setItem('refreshToken', refreshToken);
     } catch (error) {
-      console.error('Error storing tokens:', error);
+      
     }
   }
 
@@ -73,7 +73,7 @@ class AuthService {
       const refreshToken = await AsyncStorage.getItem('refreshToken');
       return { accessToken, refreshToken };
     } catch (error) {
-      console.error('Error getting tokens:', error);
+      
       return { accessToken: null, refreshToken: null };
     }
   }
@@ -82,7 +82,7 @@ class AuthService {
     try {
       await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'user']);
     } catch (error) {
-      console.error('Error clearing tokens:', error);
+      
     }
   }
 
@@ -114,18 +114,18 @@ class AuthService {
       (headers as any)['X-Refresh-Token'] = refreshToken;
     }
 
-    console.log('🔐 Making authenticated request to:', url);
-    console.log('🔐 Request headers:', JSON.stringify(headers, null, 2));
-    console.log('🔐 Request method:', options.method || 'GET');
-    console.log('🔐 Request body type:', options.body ? (options.body instanceof FormData ? 'FormData' : typeof options.body) : 'none');
+    
+    
+    
+    
 
     const response = await fetch(url, {
       ...options,
       headers,
     });
     
-    console.log('🔐 Response received - Status:', response.status, response.statusText);
-    console.log('🔐 Response URL:', response.url);
+    
+    
 
     // Check if we got a new access token in response headers
     const newAccessToken = response.headers.get('X-New-Access-Token');
@@ -153,7 +153,7 @@ class AuthService {
             });
           }
         } catch (refreshError) {
-          console.error('Token refresh failed:', refreshError);
+          
           await this.logout();
           throw new Error('Session expired. Please login again.');
         }
@@ -204,20 +204,20 @@ class AuthService {
         refreshToken: data.refreshToken,
       };
     } catch (error) {
-      console.error('Token refresh error:', error);
+      
       return null;
     }
   }
 
   // Public methods
   public async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    console.log('🔐 AuthService.login called with email:', credentials.email);
-    console.log('🔐 MOCK_MODE:', API_CONFIG.MOCK_MODE);
-    console.log('🔐 BASE_URL:', API_CONFIG.BASE_URL);
+    
+    
+    
     
     // Check if we're in mock mode
     if (API_CONFIG.MOCK_MODE) {
-      console.log('🔐 Using mock authentication for development');
+      
       
       // Simulate network delay
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -252,12 +252,12 @@ class AuthService {
       // Store user data
       await AsyncStorage.setItem('user', JSON.stringify(mockResponse.user));
       
-      console.log('🔐 Mock login successful for user:', mockUser.email);
+      
       return mockResponse;
     }
     
     // Real API call (when mock mode is disabled)
-        console.log('🔐 Making real API call to:', buildUrl(API_ENDPOINTS.AUTH.LOGIN));
+        
         const response = await fetch(buildUrl(API_ENDPOINTS.AUTH.LOGIN), {
       method: 'POST',
       headers: {
@@ -280,7 +280,7 @@ class AuthService {
           errorMessage = errorData.message || errorData.error || `HTTP ${response.status}: ${response.statusText}`;
         }
       } catch (parseError) {
-        console.error('Failed to parse error response:', parseError);
+        
         errorMessage = `HTTP ${response.status}: ${response.statusText}`;
       }
       throw new Error(errorMessage);
@@ -290,13 +290,13 @@ class AuthService {
     try {
       data = await response.json();
     } catch (parseError) {
-      console.error('Failed to parse login response:', parseError);
+      
       throw new Error('Invalid response from server');
     }
     
     // Validate response data
     if (!data.accessToken || !data.refreshToken || !data.user) {
-      console.error('Invalid login response data:', data);
+      
       throw new Error('Invalid response data from server');
     }
     
@@ -304,9 +304,9 @@ class AuthService {
     await this.storeTokens(data.accessToken, data.refreshToken);
     
     // Store user data
-    console.log('🔍 AuthService.login - User data from API:', JSON.stringify(data.user, null, 2));
-    console.log('🔍 AuthService.login - Profile picture field:', data.user.profile_picture);
-    console.log('🔍 AuthService.login - Profile picture type:', typeof data.user.profile_picture);
+    
+    
+    
     
     await AsyncStorage.setItem('user', JSON.stringify(data.user));
     
@@ -314,13 +314,13 @@ class AuthService {
   }
 
   public async register(userData: RegisterData): Promise<AuthResponse> {
-    console.log('🔐 AuthService.register called');
-    console.log('🔐 MOCK_MODE:', API_CONFIG.MOCK_MODE);
-    console.log('🔐 BASE_URL:', API_CONFIG.BASE_URL);
-    console.log('🔐 Register data:', JSON.stringify(userData, null, 2));
+    
+    
+    
+    
     
     if (API_CONFIG.MOCK_MODE) {
-      console.log('🔐 Using mock registration');
+      
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 1000));
       
@@ -341,12 +341,12 @@ class AuthService {
       };
       
       await this.storeTokens(mockResponse.accessToken, mockResponse.refreshToken);
-      console.log('🔐 Mock registration successful');
+      
       return mockResponse;
     }
     
     const registerUrl = buildUrl(API_ENDPOINTS.AUTH.REGISTER);
-    console.log('🔐 Making registration API call to:', registerUrl);
+    
     
     const response = await fetch(registerUrl, {
       method: 'POST',
@@ -356,15 +356,15 @@ class AuthService {
       body: JSON.stringify(userData),
     });
     
-    console.log('🔐 Registration API response status:', response.status);
-    console.log('🔐 Registration API response ok:', response.ok);
+    
+    
 
     if (!response.ok) {
       let errorMessage = 'Registration failed';
       let errorDetails = '';
       try {
         const errorData = await response.json();
-        console.log('🔐 Registration API error response:', errorData);
+        
         
         // Handle rate limiting specifically
         if (errorData.error && errorData.error.includes('Too many authentication attempts')) {
@@ -376,7 +376,7 @@ class AuthService {
           errorDetails = errorData.details || errorData.errors || '';
         }
       } catch (parseError) {
-        console.error('🔐 Failed to parse registration error response:', parseError);
+        
         errorMessage = `HTTP ${response.status}: ${response.statusText}`;
       }
       
@@ -385,36 +385,31 @@ class AuthService {
     }
 
     const data: AuthResponse = await response.json();
-    console.log('🔐 Registration API success response:', {
-      user: data.user,
-      hasAccessToken: !!data.accessToken,
-      hasRefreshToken: !!data.refreshToken,
-    });
     
     // Check if the response contains an error even with 200 status
     if (data && typeof data === 'object' && 'error' in data) {
-      console.log('🔐 Registration API returned error in response body:', data.error);
+      
       const errorMessage = typeof data.error === 'string' ? data.error : 'Registration failed';
       throw new Error(errorMessage);
     }
     
     // Store tokens securely
     await this.storeTokens(data.accessToken, data.refreshToken);
-    console.log('🔐 Registration tokens stored successfully');
+    
     
     // Store user data
     await AsyncStorage.setItem('user', JSON.stringify(data.user));
-    console.log('🔐 Registration user data stored successfully');
+    
     
     return data;
   }
 
   public async googleLogin(googleData?: GoogleAuthData): Promise<AuthResponse> {
-    console.log('🔐 Starting Google authentication flow');
+    
     
     try {
       // Debug: Check if the function is available
-      console.log('🔐 completeGoogleAuthFlow function:', typeof GoogleSignIn.completeGoogleAuthFlow);
+      
       
       if (typeof GoogleSignIn.completeGoogleAuthFlow !== 'function') {
         throw new Error('completeGoogleAuthFlow function is not available');
@@ -441,15 +436,10 @@ class AuthService {
       }
       
       const googleResult = authFlowResult.googleData!;
-      console.log('🔐 Google Sign-In successful, processing with backend:', {
-        id: googleResult.user.id,
-        email: googleResult.user.email,
-        name: googleResult.user.name,
-      });
       
       // Check if we're in mock mode
       if (API_CONFIG.MOCK_MODE) {
-        console.log('🔐 Using mock Google authentication with real Google data');
+        
         // Simulate API delay
         await new Promise(resolve => setTimeout(resolve, 1000));
         
@@ -472,7 +462,7 @@ class AuthService {
         };
         
         await this.storeTokens(mockResponse.accessToken, mockResponse.refreshToken);
-        console.log('🔐 Mock Google authentication successful');
+        
         return mockResponse;
       }
       
@@ -486,7 +476,7 @@ class AuthService {
         mobile: '+1234567890', // Default mobile for Google users
       };
       
-      console.log('🔐 Making Google authentication API call to:', buildUrl(API_ENDPOINTS.AUTH.SOCIAL_LOGIN));
+      
       const response = await fetch(buildUrl(API_ENDPOINTS.AUTH.SOCIAL_LOGIN), {
         method: 'POST',
         headers: {
@@ -495,8 +485,8 @@ class AuthService {
         body: JSON.stringify(backendData),
       });
 
-      console.log('🔐 Google auth API response status:', response.status);
-      console.log('🔐 Google auth API response ok:', response.ok);
+      
+      
 
       if (!response.ok) {
         let errorMessage = 'Google authentication failed';
@@ -504,7 +494,7 @@ class AuthService {
         
         try {
           const errorData = await response.json();
-          console.log('🔐 Google auth API error response:', errorData);
+          
           
           // Handle specific error cases
           if (errorData.error && errorData.error.includes('Too many authentication attempts')) {
@@ -524,7 +514,7 @@ class AuthService {
             errorDetails = errorData.details || errorData.errors || '';
           }
         } catch (parseError) {
-          console.error('🔐 Failed to parse Google auth error response:', parseError);
+          
           errorMessage = `HTTP ${response.status}: ${response.statusText}`;
         }
         
@@ -533,31 +523,25 @@ class AuthService {
       }
 
       const data: AuthResponse = await response.json();
-      console.log('🔐 Google auth API success response:', {
-        user: data.user,
-        hasAccessToken: !!data.accessToken,
-        hasRefreshToken: !!data.refreshToken,
-        message: data.message,
-      });
       
       // Check if the response contains an error even with 200 status
       if (data && typeof data === 'object' && 'error' in data) {
-        console.log('🔐 Google auth API returned error in response body:', data.error);
+        
         const errorMessage = typeof data.error === 'string' ? data.error : 'Google authentication failed';
         throw new Error(errorMessage);
       }
       
       // Store tokens securely
       await this.storeTokens(data.accessToken, data.refreshToken);
-      console.log('🔐 Google auth tokens stored successfully');
+      
       
       // Store user data
       await AsyncStorage.setItem('user', JSON.stringify(data.user));
-      console.log('🔐 Google auth user data stored successfully');
+      
       
       return data;
     } catch (error) {
-      console.error('🔐 Google authentication error:', error);
+      
       
       // Re-throw the error with proper context
       if (error instanceof Error) {
@@ -569,17 +553,17 @@ class AuthService {
   }
 
   public async logout(): Promise<void> {
-    console.log('🔐 AuthService.logout called');
-    console.log('🔐 MOCK_MODE:', API_CONFIG.MOCK_MODE);
-    console.log('🔐 BASE_URL:', API_CONFIG.BASE_URL);
+    
+    
+    
     
     try {
       const { refreshToken } = await this.getStoredTokens();
-      console.log('🔐 Refresh token exists:', !!refreshToken);
+      
       
       if (refreshToken) {
         const logoutUrl = buildUrl(API_ENDPOINTS.AUTH.LOGOUT);
-        console.log('🔐 Making logout API call to:', logoutUrl);
+        
         
         const response = await fetch(logoutUrl, {
           method: 'POST',
@@ -589,41 +573,41 @@ class AuthService {
           body: JSON.stringify({ refreshToken }),
         });
         
-        console.log('🔐 Logout API response status:', response.status);
+        
         
         if (!response.ok) {
           let errorMessage = 'Logout API call failed';
           try {
             const errorData = await response.json();
             errorMessage = errorData.message || errorData.error || `HTTP ${response.status}: ${response.statusText}`;
-            console.error('🔐 Logout API error response:', errorData);
+            
           } catch (parseError) {
-            console.error('🔐 Failed to parse logout error response:', parseError);
+            
             errorMessage = `HTTP ${response.status}: ${response.statusText}`;
           }
-          console.error('🔐 Logout API failed:', errorMessage);
+          
         } else {
-          console.log('🔐 Logout API call successful');
+          
         }
       } else {
-        console.log('🔐 No refresh token found, skipping API call');
+        
       }
     } catch (error) {
-      console.error('🔐 Logout API call failed with error:', error);
+      
     } finally {
       // Sign out from Google
       try {
         await GoogleSignIn.signOutFromGoogle();
-        console.log('🔐 Google Sign-Out successful');
+        
       } catch (error) {
-        console.error('🔐 Google Sign-Out error:', error);
+        
         // Continue with local logout even if Google sign-out fails
       }
       
       // Always clear local storage
-      console.log('🔐 Clearing stored tokens and user data');
+      
       await this.clearStoredTokens();
-      console.log('🔐 Logout completed');
+      
     }
   }
 
@@ -632,14 +616,14 @@ class AuthService {
       const userData = await AsyncStorage.getItem('user');
       return userData ? JSON.parse(userData) : null;
     } catch (error) {
-      console.error('Error getting current user:', error);
+      
       return null;
     }
   }
 
   public async isAuthenticated(): Promise<boolean> {
     const { accessToken, refreshToken } = await this.getStoredTokens();
-    console.log('🔐 Checking authentication - accessToken exists:', !!accessToken, 'refreshToken exists:', !!refreshToken);
+    
     return !!accessToken;
   }
 
@@ -663,9 +647,9 @@ class AuthService {
     
     const data = await response.json();
     
-    console.log('🔍 AuthService.getUserProfile - User data from API:', JSON.stringify(data.user, null, 2));
-    console.log('🔍 AuthService.getUserProfile - Profile picture field:', data.user.profile_picture);
-    console.log('🔍 AuthService.getUserProfile - Profile picture type:', typeof data.user.profile_picture);
+    
+    
+    
     
     // Update stored user data
     await AsyncStorage.setItem('user', JSON.stringify(data.user));
@@ -679,7 +663,7 @@ class AuthService {
     mobile?: string;
     profile_picture?: string | File;
   }): Promise<User> {
-    console.log('🔍 AuthService.updateUserProfile called with:', profileData);
+    
     
     const formData = new FormData();
     
@@ -715,22 +699,22 @@ class AuthService {
       }
     );
     
-    console.log('🔍 AuthService.updateUserProfile - Response status:', response.status);
+    
     
     if (!response.ok) {
       let errorMessage = 'Failed to update profile';
       try {
         const errorData = await response.json();
         errorMessage = errorData.message || errorData.error || errorMessage;
-        console.error('🔍 AuthService.updateUserProfile - Error:', errorData);
+        
       } catch (parseError) {
-        console.error('🔍 AuthService.updateUserProfile - Parse error:', parseError);
+        
       }
       throw new Error(errorMessage);
     }
     
     const data = await response.json();
-    console.log('🔍 AuthService.updateUserProfile - Success:', JSON.stringify(data.user, null, 2));
+    
     
     // Update stored user data
     await AsyncStorage.setItem('user', JSON.stringify(data.user));
@@ -753,7 +737,7 @@ class AuthService {
       
       return payload.exp < currentTime;
     } catch (error) {
-      console.error('Error checking token expiration:', error);
+      
       return true;
     }
   }

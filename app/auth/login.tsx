@@ -84,9 +84,6 @@ export default function LoginScreen() {
   };
 
   const handleLogin = async () => {
-    console.log('🔐 Login button clicked');
-    console.log('📧 Email:', email);
-    console.log('🔑 Password length:', password.length);
     
     // Clear any previous errors
     setEmailError('');
@@ -114,11 +111,9 @@ export default function LoginScreen() {
     }
 
     if (hasError) {
-      console.log('❌ Validation errors found, not proceeding with login');
       return;
     }
 
-    console.log('✅ Validation passed, starting login process');
     setIsLoading(true);
     
     try {
@@ -158,17 +153,15 @@ export default function LoginScreen() {
     hideNotification();
     
     try {
-      console.log('🔐 Google login button clicked');
       
       const error = await googleLogin();
       
       if (error) {
-        console.error('🔐 Google login error:', error);
+        // Handle Google login error
         
         // Handle specific error cases
         if (error.message.includes('cancelled')) {
           // User cancelled - don't show error message
-          console.log('🔐 User cancelled Google login');
           return;
         } else if (error.message.includes('Network error')) {
           showNotification('Connection Error', 'Please check your internet connection and try again.', 'error');
@@ -199,7 +192,7 @@ export default function LoginScreen() {
         }, 2000);
       }
     } catch (error) {
-      console.error('🔐 Unexpected Google login error:', error);
+      // Handle unexpected Google login error
       const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred during Google login';
       showNotification('Login Failed', errorMessage, 'error');
     } finally {

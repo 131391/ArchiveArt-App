@@ -7,15 +7,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Animated,
-  Dimensions,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    Animated,
+    Dimensions,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
@@ -105,9 +105,7 @@ export default function RegisterScreen() {
     if (text.trim().length >= 3) {
       setIsCheckingUsername(true);
       try {
-        console.log('🔍 Checking username availability for:', text.trim());
         const result = await checkUsernameAvailability(text.trim());
-        console.log('🔍 Username check result:', result);
         setUsernameValidation(result);
         
         // Always show the message from the API response
@@ -115,7 +113,7 @@ export default function RegisterScreen() {
           setUsernameError(result.message);
         }
       } catch (error) {
-        console.error('🔍 Username check error:', error);
+        // Handle username check error
         // Set a fallback error message if the API call fails
         setUsernameError('Unable to verify username availability. Please try again.');
       } finally {
@@ -167,7 +165,6 @@ export default function RegisterScreen() {
   };
 
   const handleRegister = async () => {
-    console.log('🔐 Register button clicked');
     
     // Clear previous errors
     setNameError('');
@@ -232,11 +229,9 @@ export default function RegisterScreen() {
     }
 
     if (hasErrors) {
-      console.log('❌ Validation errors found, not proceeding with registration');
       return;
     }
 
-    console.log('✅ Validation passed, starting registration process');
     setIsLoading(true);
     hideNotification();
     
@@ -253,7 +248,7 @@ export default function RegisterScreen() {
       });
       
       if (error) {
-        console.error('🔐 Registration error:', error);
+        // Handle registration error
         showNotification('Registration Failed', error.message, 'error');
       } else {
         showNotification('Registration Successful', 'Account created successfully! Welcome to ArchivART!', 'success');
@@ -262,7 +257,7 @@ export default function RegisterScreen() {
         }, 2000);
       }
     } catch (err) {
-      console.error('🔐 Unexpected registration error:', err);
+      // Handle unexpected registration error
       showNotification('Registration Failed', 'An unexpected error occurred. Please try again.', 'error');
     } finally {
       setIsLoading(false);
@@ -274,15 +269,13 @@ export default function RegisterScreen() {
     hideNotification();
     
     try {
-      console.log('🔐 Google login button clicked');
       
       const error = await googleLogin();
       
       if (error) {
-        console.error('🔐 Google login error:', error);
+        // Handle Google login error
         
         if (error.message.includes('cancelled')) {
-          console.log('🔐 User cancelled Google login');
           return;
         } else if (error.message.includes('Google Sign-In is not available')) {
           showNotification('Google Sign-In Not Available', 'Google Sign-In is not available in Expo Go. Please use a development build or production build to test Google authentication.', 'error');
@@ -296,7 +289,7 @@ export default function RegisterScreen() {
         }, 2000);
       }
     } catch (error) {
-      console.error('🔐 Unexpected Google login error:', error);
+      // Handle unexpected Google login error
       const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred during Google login';
       showNotification('Login Failed', errorMessage, 'error');
     } finally {

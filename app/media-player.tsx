@@ -1,11 +1,11 @@
 import { API_CONFIG } from '@/constants/Api';
 import { Ionicons } from '@expo/vector-icons';
-import { Audio, Video } from 'expo-av';
+import { Audio, ResizeMode, Video } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Dimensions, Pressable, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, BackHandler, Dimensions, Image, Pressable, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
 
@@ -16,6 +16,7 @@ export default function MediaPlayerScreen() {
   const [isPlaying, setIsPlaying] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
@@ -27,7 +28,8 @@ export default function MediaPlayerScreen() {
   
   // Auto-hide controls
   const controlsOpacity = useRef(new Animated.Value(1)).current;
-  const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const loadingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   const params = useLocalSearchParams<{ 
     url?: string; 
@@ -36,13 +38,37 @@ export default function MediaPlayerScreen() {
     imageUri?: string;
   }>();
   
-  const url = typeof params.url === 'string' ? params.url : '';
+  // Enhanced URL extraction to handle audio from scanning responses
+  const getMediaUrl = () => {
+    const baseUrl = typeof params.url === 'string' ? params.url : '';
+    const mediaData = params.mediaData ? JSON.parse(params.mediaData) : null;
+    
+    // Check for audio URL in mediaData first (from scanning response)
+    if (mediaData?.audio_url) {
+      return mediaData.audio_url.startsWith('http') ? mediaData.audio_url : `${API_CONFIG.BASE_URL}${mediaData.audio_url}`;
+    }
+    if (mediaData?.match?.audio_url) {
+      return mediaData.match.audio_url.startsWith('http') ? mediaData.match.audio_url : `${API_CONFIG.BASE_URL}${mediaData.match.audio_url}`;
+    }
+    
+    // Fallback to base URL
+    return baseUrl;
+  };
+
+  const url = getMediaUrl();
   const type = (typeof params.type === 'string' ? params.type : '').toLowerCase();
   const mediaData = params.mediaData ? JSON.parse(params.mediaData) : null;
   const imageUri = typeof params.imageUri === 'string' ? params.imageUri : '';
   
-  // Check both the type parameter and file extension for audio detection
-  const isAudio = type.includes('audio') || url.toLowerCase().match(/\.(mp3|wav|aac|m4a|ogg|flac)$/);
+  // Enhanced audio detection - check type, URL, and mediaData for audio content
+  const isAudio = type.includes('audio') || 
+                  url.toLowerCase().match(/\.(mp3|wav|aac|m4a|ogg|flac|mpeg|wma)$/) ||
+                  (mediaData && (
+                    mediaData.audio_url || 
+                    mediaData.match?.audio_url || 
+                    mediaData.type === 'audio' ||
+                    mediaData.match?.type === 'audio'
+                  ));
 
   // Audio visualizer animations
   const bar1Anim = useRef(new Animated.Value(0.3)).current;
@@ -77,29 +103,155 @@ export default function MediaPlayerScreen() {
   };
 
   useEffect(() => {
-    console.log('🎬 Media Player - Received params:', params);
-    console.log('🎬 Media Player - URL:', url);
-    console.log('🎬 Media Player - Type:', type);
-    console.log('🎬 Media Player - Is Audio:', isAudio);
-    console.log('🎬 Media Player - Media Data:', mediaData);
-    
-    // Log the extracted display data for debugging
-    const displayData = getDisplayData();
-    console.log('🎬 Display Data:', displayData);
-    
+    // Only proceed if we have a URL or this is an audio type
+    if (!url && !isAudio) {
+      setIsLoading(false);
+      setIsLoadingAudio(false);
+      return;
+    }
+
+    // Load and prepare audio when URL is available
+    const loadAudio = async () => {
+      if (url && isAudio && !isLoadingAudio) {
+        try {
+          setIsLoadingAudio(true);
+          setIsLoading(true);
+          setHasError(false);
+          
+          // Set a timeout for loading (10 seconds)
+          loadingTimeoutRef.current = setTimeout(() => {
+            setIsLoading(false);
+            setHasError(true);
+            setIsPlaying(false);
+            setIsLoadingAudio(false);
+          }, 10000);
+          
+          // Create new audio instance
+          const { sound } = await Audio.Sound.createAsync(
+            { uri: url },
+            { shouldPlay: false, isLooping: true, isMuted: false },
+            (status) => {
+              // Handle playback status updates
+              if (status.isLoaded) {
+                if (status.didJustFinish) {
+                  setIsPlaying(false);
+                }
+                // Sync playing state with actual audio status
+                if (status.isPlaying !== undefined) {
+                  setIsPlaying(status.isPlaying);
+                }
+              }
+            }
+          );
+          
+          // Clear loading timeout since audio loaded successfully
+          if (loadingTimeoutRef.current) {
+            clearTimeout(loadingTimeoutRef.current);
+            loadingTimeoutRef.current = null;
+          }
+          
+          // Set the audio reference
+          if (audioRef.current) {
+            await audioRef.current.unloadAsync();
+          }
+          audioRef.current = sound;
+          
+          setIsLoading(false);
+          setHasError(false);
+          setIsLoadingAudio(false);
+          
+          // Auto-play audio
+          await sound.playAsync();
+          setIsPlaying(true);
+        } catch (error) {
+          // Clear loading timeout on error
+          if (loadingTimeoutRef.current) {
+            clearTimeout(loadingTimeoutRef.current);
+            loadingTimeoutRef.current = null;
+          }
+          // Handle audio load error
+          setIsLoading(false);
+          setHasError(true);
+          setIsPlaying(false);
+          setIsLoadingAudio(false);
+        }
+      } else if (url && !isAudio && !isLoadingAudio) {
+        // If URL exists but not detected as audio, try to load it anyway
+        // This handles cases where audio detection might fail
+        try {
+          setIsLoadingAudio(true);
+          setIsLoading(true);
+          setHasError(false);
+          
+          // Set a timeout for loading (10 seconds)
+          loadingTimeoutRef.current = setTimeout(() => {
+            setIsLoading(false);
+            setHasError(true);
+            setIsPlaying(false);
+            setIsLoadingAudio(false);
+          }, 10000);
+          
+          const { sound } = await Audio.Sound.createAsync(
+            { uri: url },
+            { shouldPlay: false, isLooping: true, isMuted: false },
+            (status) => {
+              if (status.isLoaded) {
+                if (status.didJustFinish) {
+                  setIsPlaying(false);
+                }
+                // Sync playing state with actual audio status
+                if (status.isPlaying !== undefined) {
+                  setIsPlaying(status.isPlaying);
+                }
+              }
+            }
+          );
+          
+          // Clear loading timeout since audio loaded successfully
+          if (loadingTimeoutRef.current) {
+            clearTimeout(loadingTimeoutRef.current);
+            loadingTimeoutRef.current = null;
+          }
+          
+          if (audioRef.current) {
+            await audioRef.current.unloadAsync();
+          }
+          audioRef.current = sound;
+          
+          setIsLoading(false);
+          setHasError(false);
+          setIsLoadingAudio(false);
+          await sound.playAsync();
+          setIsPlaying(true);
+        } catch (error) {
+          // Clear loading timeout on error
+          if (loadingTimeoutRef.current) {
+            clearTimeout(loadingTimeoutRef.current);
+            loadingTimeoutRef.current = null;
+          }
+          // If audio loading fails, it's probably not audio
+          setIsLoading(false);
+          setHasError(false);
+          setIsLoadingAudio(false);
+        }
+      }
+    };
+
     // Auto-play video when URL is available
     if (url && !isAudio && videoRef.current) {
-      console.log('🎬 Auto-playing video:', url);
       videoRef.current.playAsync().catch(error => {
-        console.error('🎬 Video play error:', error);
+        // Handle video play error
         setIsPlaying(false);
       });
-    } else if (url && isAudio && audioRef.current) {
-      console.log('🎬 Auto-playing audio:', url);
-      audioRef.current.playAsync().catch(error => {
-        console.error('🎬 Audio play error:', error);
-        setIsPlaying(false);
-      });
+    } else if (url && (isAudio || !videoRef.current)) {
+      // Load audio if detected as audio OR if no video ref (fallback)
+      loadAudio();
+    } else if (!url && isAudio) {
+      // If no URL but detected as audio, show error state
+      setIsLoading(false);
+      setHasError(true);
+      setIsPlaying(false);
+      setIsLoadingAudio(false);
     }
 
     // Start auto-hide timer
@@ -109,14 +261,70 @@ export default function MediaPlayerScreen() {
       if (controlsTimeoutRef.current) {
         clearTimeout(controlsTimeoutRef.current);
       }
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+      }
+      setIsLoadingAudio(false);
     };
-  }, [params, url, type, isAudio, mediaData]);
+  }, [url, isAudio]);
 
   useEffect(() => {
     if (isAudio) {
       Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
     }
   }, [isAudio]);
+
+  // Cleanup audio when component unmounts or when navigating away
+  useEffect(() => {
+    return () => {
+      // Clean up audio when component unmounts
+      if (audioRef.current) {
+        audioRef.current.unloadAsync().catch(() => {
+          // Ignore errors during cleanup
+        });
+      }
+      // Clear all timeouts
+      if (controlsTimeoutRef.current) {
+        clearTimeout(controlsTimeoutRef.current);
+      }
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Handle screen focus changes - stop audio when screen loses focus
+  useFocusEffect(
+    React.useCallback(() => {
+      // Screen is focused - audio can play
+      return () => {
+        // Screen is losing focus - stop audio
+        if (audioRef.current) {
+          audioRef.current.stopAsync().catch(() => {
+            // Ignore errors during cleanup
+          });
+        }
+        if (videoRef.current) {
+          videoRef.current.stopAsync().catch(() => {
+            // Ignore errors during cleanup
+          });
+        }
+      };
+    }, [])
+  );
+
+  // Handle hardware back button on Android
+  useEffect(() => {
+    const backAction = () => {
+      // Stop audio and navigate back
+      handleBack();
+      return true; // Prevent default back behavior
+    };
+
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+
+    return () => backHandler.remove();
+  }, []);
 
   // Handle orientation changes
   useEffect(() => {
@@ -129,7 +337,7 @@ export default function MediaPlayerScreen() {
           currentOrientation === ScreenOrientation.Orientation.LANDSCAPE_RIGHT
         );
       } catch (error) {
-        console.log('ScreenOrientation not available, using fallback');
+
         // Fallback: use dimensions to determine orientation
         const { width, height } = Dimensions.get('window');
         setIsLandscapeMode(width > height);
@@ -157,7 +365,7 @@ export default function MediaPlayerScreen() {
     try {
       orientationSubscription = ScreenOrientation.addOrientationChangeListener(handleOrientationChange);
     } catch (error) {
-      console.log('ScreenOrientation listener not available, using fallback');
+
     }
     
     const dimensionSubscription = Dimensions.addEventListener('change', handleDimensionChange);
@@ -209,21 +417,28 @@ export default function MediaPlayerScreen() {
       if (isAudio && audioRef.current) {
         if (isPlaying) {
           await audioRef.current.pauseAsync();
+          setIsPlaying(false);
         } else {
           await audioRef.current.playAsync();
+          setIsPlaying(true);
         }
       } else if (!isAudio && videoRef.current) {
         if (isPlaying) {
           await videoRef.current.pauseAsync();
+          setIsPlaying(false);
         } else {
           await videoRef.current.playAsync();
+          setIsPlaying(true);
         }
+      } else {
+        // If no audio/video ref available, just toggle the state
+        setIsPlaying(!isPlaying);
       }
-      setIsPlaying(!isPlaying);
       // Show controls when toggling play/pause
       showControlsWithDelay();
     } catch (error) {
-      console.error('Toggle play/pause error:', error);
+      // Handle play/pause error - try to reset state
+      setIsPlaying(false);
     }
   };
 
@@ -239,39 +454,100 @@ export default function MediaPlayerScreen() {
       setIsPlaying(false);
       showControlsWithDelay();
     } catch (error) {
-      console.error('Stop media error:', error);
+      // Handle stop error
+      setIsPlaying(false);
     }
   };
 
-  const handleBack = () => {
+  const handleBack = async () => {
+    // Stop and cleanup audio before navigating away
+    if (audioRef.current) {
+      try {
+        await audioRef.current.stopAsync();
+        await audioRef.current.unloadAsync();
+      } catch (error) {
+        // Ignore errors during cleanup
+      }
+    }
+    
+    // Stop video if playing
+    if (videoRef.current) {
+      try {
+        await videoRef.current.stopAsync();
+      } catch (error) {
+        // Ignore errors during cleanup
+      }
+    }
+    
     // Navigate to fresh scanner screen instead of going back to previous state
     router.replace('/scanner');
   };
 
-  // Extract data from API response or use mock data
+  // Extract data from API response or use dynamic data
   const getDisplayData = () => {
     if (mediaData && mediaData.match) {
       const match = mediaData.match;
       return {
-        title: match.title || "Matched Content",
-        collection: "ArchivART Collection",
-        description: `Similarity: ${match.similarity?.description || 'Unknown'} (Score: ${match.similarity?.score || 'N/A'})`,
-        environment: "Digital Archive",
-        estimatedTime: "Variable",
-        rating: `${match.similarity?.score ? (match.similarity.score * 5).toFixed(1) : 'N/A'}/5`,
-        image: match.scanning_image ? `${API_CONFIG.BASE_URL}/uploads/media/${match.scanning_image}` : "https://images.unsplash.com/photo-1446776877081-d282a0f896e2?w=400&h=300&fit=crop"
+        title: match.title || match.name || (isAudio ? "Audio Match" : "Matched Content"),
+        collection: match.collection || (isAudio ? "Audio Collection" : "ArchivART Collection"),
+        description: match.description || match.similarity?.description || 
+                   (isAudio ? `Audio similarity: ${match.similarity?.score ? (match.similarity.score * 100).toFixed(1) + '%' : 'N/A'}` : 
+                    `Similarity Score: ${match.similarity?.score ? (match.similarity.score * 100).toFixed(1) + '%' : 'N/A'}`),
+        environment: match.environment || (isAudio ? "Audio Archive" : "Digital Archive"),
+        estimatedTime: match.estimatedTime || (isAudio ? "Audio Track" : "Variable"),
+        rating: `${match.similarity?.score ? (match.similarity.score * 5).toFixed(1) : '4.8'}/5`,
+        image: match.scanning_image ? `${API_CONFIG.BASE_URL}/uploads/media/${match.scanning_image}` : 
+               match.audio_thumbnail ? `${API_CONFIG.BASE_URL}/uploads/media/${match.audio_thumbnail}` :
+               match.image || "https://images.unsplash.com/photo-1446776877081-d282a0f896e2?w=400&h=300&fit=crop"
       };
     }
 
-    // Mock data for demonstration
+    // Dynamic fallback data based on URL, type, or content
+    const isSpaceContent = url.toLowerCase().includes('space') || url.toLowerCase().includes('galaxy');
+    const isNatureContent = url.toLowerCase().includes('nature') || url.toLowerCase().includes('forest');
+    const isMusicContent = url.toLowerCase().includes('music') || url.toLowerCase().includes('song') || url.toLowerCase().includes('audio');
+    
+    if (isAudio || isMusicContent) {
+      return {
+        title: "Audio Experience",
+        collection: "Audio Archive Collection",
+        description: "An immersive audio experience featuring high-quality sound design and musical composition from our digital archive.",
+        environment: "Audio Studio",
+        estimatedTime: "Audio Track",
+        rating: "4.8/5",
+        image: imageUri || "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=300&fit=crop"
+      };
+    } else if (isSpaceContent) {
+      return {
+        title: "Space Explorer X-5",
+        collection: "Sci-Fi Vehicle Collection",
+        description: "A highly advanced interstellar vehicle designed for deep-space exploration. Features modular systems and a panoramic viewing cockpit.",
+        environment: "Space",
+        estimatedTime: "3 min",
+        rating: "4.8/5",
+        image: "https://images.unsplash.com/photo-1446776877081-d282a0f896e2?w=400&h=300&fit=crop"
+      };
+    } else if (isNatureContent) {
+      return {
+        title: "Forest Sanctuary",
+        collection: "Nature Collection",
+        description: "A serene forest environment with ancient trees and natural wildlife. Experience the calming sounds of nature.",
+        environment: "Forest",
+        estimatedTime: "5 min",
+        rating: "4.9/5",
+        image: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=400&h=300&fit=crop"
+      };
+    }
+
+    // Default dynamic content
     return {
-      title: "Space Explorer X-5",
-      collection: "Sci-Fi Vehicle Collection",
-      description: "A highly advanced interstellar vehicle designed for deep-space exploration. Features modular systems and a panoramic viewing cockpit.",
-      environment: "Space",
-      estimatedTime: "3 min",
-      rating: "4.8/5",
-      image: "https://images.unsplash.com/photo-1446776877081-d282a0f896e2?w=400&h=300&fit=crop"
+      title: "ArchivART Experience",
+      collection: "Digital Archive Collection",
+      description: "An immersive digital experience showcasing cutting-edge technology and artistic expression through augmented reality.",
+      environment: "Digital",
+      estimatedTime: "4 min",
+      rating: "4.7/5",
+      image: imageUri || "https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=400&h=300&fit=crop"
     };
   };
 
@@ -330,15 +606,15 @@ export default function MediaPlayerScreen() {
       width: videoWidth,
       height: videoHeight,
       backgroundColor: '#000000',
-      alignSelf: 'center',
+      alignSelf: 'center' as const,
     };
   };
 
   const getVideoResizeMode = () => {
     if (videoDimensions.width > 0 && videoDimensions.height > 0) {
-      return 'contain'; // Always use contain when we have video dimensions
+      return ResizeMode.CONTAIN; // Always use contain when we have video dimensions
     }
-    return isLandscape() ? 'contain' : 'cover';
+    return isLandscape() ? ResizeMode.CONTAIN : ResizeMode.COVER;
   };
 
   return (
@@ -358,24 +634,21 @@ export default function MediaPlayerScreen() {
             isLooping={true}
             isMuted={isMuted}
             onLoadStart={() => {
-              console.log('🎬 Video loading started');
               setIsLoading(true);
               setHasError(false);
             }}
             onLoad={(status) => {
-              console.log('🎬 Video loaded successfully');
-              console.log('🎬 Video status:', status);
+              setIsLoading(false);
+              setHasError(false);
               
               if (status.isLoaded && status.durationMillis) {
                 // Get video dimensions from status
-                const videoWidth = status.naturalSize?.width || 0;
-                const videoHeight = status.naturalSize?.height || 0;
+                const videoWidth = (status as any).naturalSize?.width || 0;
+                const videoHeight = (status as any).naturalSize?.height || 0;
                 
                 if (videoWidth > 0 && videoHeight > 0) {
                   setVideoDimensions({ width: videoWidth, height: videoHeight });
                   setVideoAspectRatio(videoWidth / videoHeight);
-                  console.log('🎬 Video dimensions:', { width: videoWidth, height: videoHeight });
-                  console.log('🎬 Video aspect ratio:', videoWidth / videoHeight);
                 }
               }
               
@@ -383,8 +656,7 @@ export default function MediaPlayerScreen() {
               setHasError(false);
             }}
             onError={(error) => {
-              console.error('🎬 Video load error:', error);
-              console.error('🎬 Video URL that failed:', url);
+              // Handle video load error
               setIsLoading(false);
               setHasError(true);
             }}
@@ -396,10 +668,9 @@ export default function MediaPlayerScreen() {
           />
           
           {/* Tap Area for Controls */}
-          <Pressable 
+          <Pressable
             style={styles.tapArea}
             onPress={showControlsWithDelay}
-            activeOpacity={1}
           />
           
           {/* Loading Overlay */}
@@ -485,7 +756,7 @@ export default function MediaPlayerScreen() {
                   colors={['rgba(255,255,255,0.2)', 'rgba(255,255,255,0.1)']}
                   style={styles.playButtonGradient}
                 >
-                  <Ionicons name="play" size={32} color="white" />
+                  <Ionicons name={isPlaying ? "pause" : "play"} size={32} color="white" />
                 </LinearGradient>
               </TouchableOpacity>
             </Animated.View>
@@ -586,61 +857,271 @@ export default function MediaPlayerScreen() {
               </View>
             </View>
           </Animated.View>
-
-          {/* Debug Info - Enhanced for data debugging */}
-          {__DEV__ && (
-            <View style={styles.debugOverlay}>
-              <Text style={styles.debugText}>
-                Video: {videoDimensions.width}x{videoDimensions.height}
-              </Text>
-              <Text style={styles.debugText}>
-                Screen: {screenData.width}x{screenData.height}
-              </Text>
-              <Text style={styles.debugText}>
-                Aspect: {videoAspectRatio.toFixed(2)}
-              </Text>
-              <Text style={styles.debugText}>
-                Mode: {isLandscape() ? 'Landscape' : 'Portrait'}
-              </Text>
-              <Text style={styles.debugText}>
-                Title: {displayData.title}
-              </Text>
-              <Text style={styles.debugText}>
-                HasData: {mediaData ? 'Yes' : 'No'}
-              </Text>
-            </View>
-          )}
         </View>
       ) : (
-        /* Fallback for Audio or No Media */
-        <View style={styles.fallbackContainer}>
+        /* Enhanced Audio Player with Visual Elements */
+        <View style={styles.audioContainer}>
+          {/* Loading Overlay for Audio */}
+          {isLoading && (
+            <View style={styles.loadingOverlay}>
+              <View style={styles.loadingContent}>
+                <Ionicons name="musical-notes" size={48} color="#8B5CF6" />
+                <Text style={styles.loadingText}>Loading Audio...</Text>
+                <TouchableOpacity 
+                  style={styles.skipButton}
+                  onPress={() => {
+                    // Skip loading and show error state
+                    if (loadingTimeoutRef.current) {
+                      clearTimeout(loadingTimeoutRef.current);
+                      loadingTimeoutRef.current = null;
+                    }
+                    setIsLoading(false);
+                    setHasError(true);
+                    setIsPlaying(false);
+                    setIsLoadingAudio(false);
+                  }}
+                  disabled={false}
+                >
+                  <Text style={styles.skipButtonText}>Skip</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          {/* Error Overlay for Audio */}
+          {hasError && (
+            <View style={styles.errorOverlay}>
+              <View style={styles.errorContent}>
+                <Ionicons name="alert-circle" size={48} color="#FF6B6B" />
+                <Text style={styles.errorText}>Unable to load audio</Text>
+                <Text style={styles.errorSubtext}>
+                  {!url ? 'No audio URL provided' : 'Please check your connection and try again'}
+                </Text>
+                <TouchableOpacity 
+                  style={[styles.retryButton, !url && { opacity: 0.5 }]}
+                  onPress={async () => {
+                    if (!url) return; // Don't retry if no URL
+                    
+                    setHasError(false);
+                    setIsLoading(true);
+                    setIsLoadingAudio(false);
+                    
+                    // Retry loading audio
+                    try {
+                      const { sound } = await Audio.Sound.createAsync(
+                        { uri: url },
+                        { shouldPlay: false, isLooping: true, isMuted: false },
+                        (status) => {
+                          if (status.isLoaded) {
+                            if (status.didJustFinish) {
+                              setIsPlaying(false);
+                            }
+                            // Sync playing state with actual audio status
+                            if (status.isPlaying !== undefined) {
+                              setIsPlaying(status.isPlaying);
+                            }
+                          }
+                        }
+                      );
+                      
+                      if (audioRef.current) {
+                        await audioRef.current.unloadAsync();
+                      }
+                      audioRef.current = sound;
+                      
+                      setIsLoading(false);
+                      setHasError(false);
+                      setIsLoadingAudio(false);
+                      await sound.playAsync();
+                      setIsPlaying(true);
+                    } catch (error) {
+                      setIsLoading(false);
+                      setHasError(true);
+                      setIsLoadingAudio(false);
+                    }
+                  }}
+                  disabled={!url}
+                >
+                  <Text style={styles.retryButtonText}>Retry</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+          
           <LinearGradient
             colors={['#1a1a2e', '#16213e', '#0f3460']}
-            style={styles.fallbackGradient}
+            style={styles.audioGradient}
           >
-            <View style={styles.fallbackContent}>
-              <View style={styles.audioIcon}>
-                <Ionicons name="musical-notes" size={64} color="#8B5CF6" />
-              </View>
-              <Text style={styles.fallbackTitle}>Audio Content</Text>
-              <Text style={styles.fallbackSubtitle}>
-                Audio playback is not available in this view.{'\n'}
-                Please use the standard media player for audio content.
-              </Text>
-              <TouchableOpacity 
-                style={styles.backToScannerButton} 
-                onPress={handleBack}
-                activeOpacity={0.9}
-              >
-                <LinearGradient
-                  colors={['#8B5CF6', '#7C3AED']}
-                  style={styles.buttonGradient}
+            {/* Tap Area for Controls */}
+            <Pressable 
+              style={styles.tapArea}
+              onPress={showControlsWithDelay}
+            />
+            {/* Top Controls for Audio */}
+            <Animated.View style={[
+              styles.topControls, 
+              { opacity: controlsOpacity }
+            ]}>
+              <LinearGradient
+                colors={['rgba(0,0,0,0.8)', 'rgba(0,0,0,0.4)', 'transparent']}
+                style={styles.gradientOverlay}
+              />
+              <View style={styles.topControlsContent}>
+                <TouchableOpacity 
+                  style={styles.backButton}
+                  onPress={handleBack}
+                  activeOpacity={0.8}
                 >
-                  <Ionicons name="scan" size={20} color="white" style={{ marginRight: 8 }} />
-                  <Text style={styles.backToScannerText}>Back to Scanner</Text>
-                </LinearGradient>
-              </TouchableOpacity>
+                  <Ionicons name="chevron-back" size={28} color="white" />
+                </TouchableOpacity>
+                
+                <View style={styles.topRightControls}>
+                  <TouchableOpacity 
+                    style={styles.controlButton}
+                    onPress={stopMedia}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="stop" size={22} color="white" />
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={styles.controlButton}
+                    onPress={() => setIsMuted(!isMuted)}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name={isMuted ? "volume-mute" : "volume-high"} size={22} color="white" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </Animated.View>
+
+            {/* Audio Visualizer */}
+            <View style={styles.audioVisualizer}>
+              <View style={styles.visualizerContainer}>
+                <Animated.View style={[styles.audioBar, { height: bar1Anim }]} />
+                <Animated.View style={[styles.audioBar, { height: bar2Anim }]} />
+                <Animated.View style={[styles.audioBar, { height: bar3Anim }]} />
+                <Animated.View style={[styles.audioBar, { height: bar4Anim }]} />
+                <Animated.View style={[styles.audioBar, { height: bar5Anim }]} />
+              </View>
+              
+              {/* Album Art / Image */}
+              <View style={styles.albumArtContainer}>
+                <View style={styles.albumArt}>
+                  {displayData.image ? (
+                    <Image 
+                      source={{ uri: displayData.image }} 
+                      style={styles.albumArtImage}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <LinearGradient
+                      colors={['#8B5CF6', '#7C3AED', '#6D28D9']}
+                      style={styles.albumArtPlaceholder}
+                    >
+                      <Ionicons name="musical-notes" size={48} color="white" />
+                    </LinearGradient>
+                  )}
+                </View>
+                
+                {/* Play/Pause Button Overlay */}
+                <TouchableOpacity 
+                  style={styles.audioPlayButton}
+                  onPress={togglePlayPause}
+                  activeOpacity={0.8}
+                >
+                  <LinearGradient
+                    colors={['rgba(255,255,255,0.9)', 'rgba(255,255,255,0.7)']}
+                    style={styles.audioPlayButtonGradient}
+                  >
+                    <Ionicons name={isPlaying ? "pause" : "play"} size={32} color="#1a1a2e" />
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
             </View>
+
+
+            {/* Bottom Content for Audio - Title, Description & Actions */}
+            <Animated.View style={[
+              styles.bottomContainer, 
+              { opacity: controlsOpacity }
+            ]}>
+              <LinearGradient
+                colors={['transparent', 'rgba(0,0,0,0.4)', 'rgba(0,0,0,0.8)']}
+                style={styles.bottomGradient}
+              />
+              
+              <View style={styles.bottomContent}>
+                {/* Title and Description */}
+                <View style={styles.contentInfo}>
+                  <Text style={styles.reelsTitle} numberOfLines={2}>
+                    {displayData.title}
+                  </Text>
+                  <Text style={styles.reelsDescription} numberOfLines={3}>
+                    {displayData.description}
+                  </Text>
+                  <View style={styles.reelsMeta}>
+                    <View style={styles.metaItem}>
+                      <Ionicons name="star" size={12} color="#FFD700" />
+                      <Text style={styles.reelsMetaText}>{displayData.rating}</Text>
+                    </View>
+                    <View style={styles.metaDivider} />
+                    <View style={styles.metaItem}>
+                      <Ionicons name="location" size={12} color="rgba(255,255,255,0.6)" />
+                      <Text style={styles.reelsMetaText}>{displayData.environment}</Text>
+                    </View>
+                    <View style={styles.metaDivider} />
+                    <View style={styles.metaItem}>
+                      <Ionicons name="time" size={12} color="rgba(255,255,255,0.6)" />
+                      <Text style={styles.reelsMetaText}>{displayData.estimatedTime}</Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Right Side Actions */}
+                <View style={styles.rightActions}>
+                  <TouchableOpacity 
+                    style={styles.actionButton}
+                    onPress={() => setIsLiked(!isLiked)}
+                    activeOpacity={0.8}
+                  >
+                    <View style={styles.actionIcon}>
+                      <Ionicons 
+                        name={isLiked ? "heart" : "heart-outline"} 
+                        size={22} 
+                        color={isLiked ? "#FF6B6B" : "white"} 
+                      />
+                    </View>
+                    <Text style={styles.actionText}>
+                      {isLiked ? "Liked" : "Like"}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    style={styles.actionButton}
+                    activeOpacity={0.8}
+                  >
+                    <View style={styles.actionIcon}>
+                      <Ionicons name="share-outline" size={22} color="white" />
+                    </View>
+                    <Text style={styles.actionText}>
+                      Share
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    style={styles.actionButton}
+                    activeOpacity={0.8}
+                  >
+                    <View style={styles.actionIcon}>
+                      <Ionicons name="bookmark-outline" size={22} color="white" />
+                    </View>
+                    <Text style={styles.actionText}>
+                      Save
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </Animated.View>
           </LinearGradient>
         </View>
       )}
@@ -834,14 +1315,12 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: 'white',
     marginBottom: 8,
-    textShadow: '0px 1px 3px rgba(0,0,0,0.8)',
   },
   reelsDescription: {
     fontSize: 15,
     color: 'rgba(255, 255, 255, 0.85)',
     lineHeight: 22,
     marginBottom: 12,
-    textShadow: '0px 1px 2px rgba(0,0,0,0.6)',
   },
   reelsMeta: {
     flexDirection: 'row',
@@ -890,7 +1369,6 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: '600',
     textAlign: 'center',
-    textShadow: '0px 1px 2px rgba(0,0,0,0.6)',
   },
   fallbackContainer: {
     flex: 1,
@@ -990,5 +1468,112 @@ const styles = StyleSheet.create({
   },
   actionTextLandscape: {
     fontSize: 10,
+  },
+  
+  // Audio Player Styles
+  audioContainer: {
+    flex: 1,
+    backgroundColor: '#000000',
+  },
+  audioGradient: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  audioVisualizer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+    paddingHorizontal: 20,
+  },
+  visualizerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 200,
+    marginBottom: 40,
+  },
+  audioBar: {
+    width: 8,
+    backgroundColor: '#8B5CF6',
+    marginHorizontal: 4,
+    borderRadius: 4,
+    minHeight: 20,
+  },
+  albumArtContainer: {
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  albumArt: {
+    width: 280,
+    height: 280,
+    borderRadius: 20,
+    overflow: 'hidden',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    marginBottom: 20,
+  },
+  albumArtImage: {
+    width: '100%',
+    height: '100%',
+  },
+  albumArtPlaceholder: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  audioPlayButton: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    overflow: 'hidden',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  audioPlayButtonGradient: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  audioControls: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 30,
+    marginBottom: 20,
+  },
+  audioControlButton: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  skipButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  skipButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+    opacity: 0.9,
   },
 });

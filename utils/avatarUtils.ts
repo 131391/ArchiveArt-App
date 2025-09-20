@@ -31,30 +31,48 @@ export const generateInitials = (name: string): string => {
 };
 
 /**
- * Get avatar props for displaying user profile picture or initials
+ * Get avatar props for displaying user profile picture or default avatar
  * @param user - User object with name and optional profile_picture
  * @returns Object with avatar configuration
  */
 export const getAvatarProps = (user: { name: string; profile_picture?: string }) => {
-  // Debug logging to see what data we're receiving
-  console.log('🔍 getAvatarProps - User data:', {
-    name: user.name,
-    profile_picture: user.profile_picture,
-    profile_picture_type: typeof user.profile_picture,
-    profile_picture_length: user.profile_picture?.length,
-  });
-  
   const hasProfilePicture = user.profile_picture && user.profile_picture.trim() !== '';
   
   const result = {
     hasProfilePicture,
     profilePictureUrl: hasProfilePicture ? user.profile_picture : null,
+    defaultAvatarUrl: require('@/assets/images/ALogo-square.png'),
     initials: generateInitials(user.name),
   };
   
-  console.log('🔍 getAvatarProps - Result:', result);
-  
   return result;
+};
+
+/**
+ * Parse phone number to remove country code and return local number
+ * @param phoneNumber - Phone number with or without country code
+ * @returns Local phone number without country code
+ */
+export const parseLocalPhoneNumber = (phoneNumber: string): string => {
+  if (!phoneNumber) return '';
+  
+  // Remove all non-digits first
+  let cleanedMobile = phoneNumber.replace(/\D/g, '');
+  
+  // Handle common country codes
+  if (cleanedMobile.startsWith('91') && cleanedMobile.length === 12) {
+    // Indian number with +91 prefix
+    return cleanedMobile.substring(2); // Remove '91'
+  } else if (cleanedMobile.startsWith('1') && cleanedMobile.length === 11) {
+    // US number with +1 prefix
+    return cleanedMobile.substring(1); // Remove '1'
+  } else if (cleanedMobile.length > 10) {
+    // Generic: if longer than 10 digits, assume first digits are country code
+    return cleanedMobile.slice(-10); // Take last 10 digits
+  } else {
+    // Already a local number
+    return cleanedMobile;
+  }
 };
 
 /**

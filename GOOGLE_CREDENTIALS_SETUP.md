@@ -36,7 +36,7 @@ Replace these placeholder values:
 
 ## 📋 **How to Get Your Credentials**
 
-1. **Go to Google Cloud Console**: https://console.cloud.google.com/
+1. **Go to Google Cloud Platform**: https://cloud.google.com/
 2. **Create or select a project**
 3. **Enable Google Sign-In API**
 4. **Create OAuth 2.0 credentials**:

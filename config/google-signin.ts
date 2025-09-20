@@ -7,7 +7,6 @@ try {
   GoogleSignin = googleSignInModule.GoogleSignin;
   statusCodes = googleSignInModule.statusCodes;
 } catch (error) {
-  console.warn('Google Sign-In module not available in this environment (Expo Go)');
 }
 
 // Google Sign-In Configuration
@@ -36,7 +35,6 @@ export const isGoogleSignInAvailable = (): boolean => {
 // Configure Google Sign-In
 export const configureGoogleSignIn = (): void => {
   if (!isGoogleSignInAvailable()) {
-    console.warn('Google Sign-In not available in this environment');
     return;
   }
 
@@ -48,9 +46,8 @@ export const configureGoogleSignIn = (): void => {
       hostedDomain: '',
       forceCodeForRefreshToken: true,
     });
-    console.log('Google Sign-In configured successfully');
   } catch (error) {
-    console.error('Failed to configure Google Sign-In:', error);
+    // Handle Google Sign-In configuration error
   }
 };
 
@@ -84,9 +81,7 @@ export const signInWithGoogle = async () => {
       idToken: tokens.idToken,
     };
   } catch (error: any) {
-    console.error('Google Sign-In error:', error);
-    console.error('Google Sign-In error code:', error.code);
-    console.error('Google Sign-In error message:', error.message);
+    // Handle Google Sign-In error
     
     if (statusCodes) {
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
@@ -124,15 +119,13 @@ export const signInWithGoogle = async () => {
 // Sign out from Google
 export const signOutFromGoogle = async (): Promise<void> => {
   if (!isGoogleSignInAvailable()) {
-    console.warn('Google Sign-In not available, skipping sign out');
     return;
   }
 
   try {
     await GoogleSignin.signOut();
-    console.log('Google Sign-Out successful');
   } catch (error) {
-    console.error('Google Sign-Out error:', error);
+    // Handle Google Sign-Out error
     throw error;
   }
 };
@@ -140,7 +133,6 @@ export const signOutFromGoogle = async (): Promise<void> => {
 // Complete Google authentication flow (login or register)
 export const completeGoogleAuthFlow = async () => {
   try {
-    console.log('🔐 Starting Google authentication flow...');
     
     if (!isGoogleSignInAvailable()) {
       return {
@@ -161,11 +153,6 @@ export const completeGoogleAuthFlow = async () => {
       };
     }
 
-    console.log('🔐 Google Sign-In successful:', {
-      id: googleResult.user.id,
-      email: googleResult.user.email,
-      name: googleResult.user.name,
-    });
 
     // Step 2: Prepare data for backend
     const googleData = {
@@ -180,7 +167,7 @@ export const completeGoogleAuthFlow = async () => {
     };
 
   } catch (error: any) {
-    console.error('🔐 Google authentication flow error:', error);
+    // Handle Google authentication flow error
     
     // Handle specific error cases
     if (error.message === 'Sign in was cancelled by user') {
@@ -232,7 +219,7 @@ export const isSignedInToGoogle = async (): Promise<boolean> => {
   try {
     return await GoogleSignin.hasPreviousSignIn();
   } catch (error) {
-    console.error('Error checking Google sign-in status:', error);
+    // Handle Google sign-in status check error
     return false;
   }
 };
@@ -247,7 +234,7 @@ export const getCurrentGoogleUser = async () => {
     const userInfo = await GoogleSignin.getCurrentUser();
     return userInfo?.user || null;
   } catch (error) {
-    console.error('Error getting current Google user:', error);
+    // Handle Google user retrieval error
     return null;
   }
 };

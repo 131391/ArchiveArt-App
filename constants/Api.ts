@@ -28,7 +28,7 @@
  *    if (!response.ok) {
  *      const errorData = await response.json();
  *      const userMessage = handleApiError(response, errorData);
- *      console.error(userMessage);
+ *      // Handle error appropriately
  *    }
  * 
  * 4. Validation:
@@ -440,7 +440,6 @@ export async function checkUsernameAvailability(username: string): Promise<Usern
 
   // Mock mode for testing
   if (API_CONFIG.MOCK_MODE) {
-    console.log('🔐 Mock mode: Checking username availability for:', username);
     
     // Simulate API delay
     await new Promise(resolve => setTimeout(resolve, 500));
@@ -477,7 +476,6 @@ export async function checkUsernameAvailability(username: string): Promise<Usern
 
   try {
     const url = `${buildUrl(API_ENDPOINTS.AUTH.CHECK_USERNAME)}?username=${encodeURIComponent(username.trim())}`;
-    console.log('🔐 Checking username availability:', url);
     
     // Create a timeout controller for better compatibility
     const controller = new AbortController();
@@ -494,7 +492,7 @@ export async function checkUsernameAvailability(username: string): Promise<Usern
     clearTimeout(timeoutId);
 
     if (!response.ok) {
-      console.error('🔐 Username check failed with status:', response.status);
+      // Handle API error
       return {
         available: false,
         suggestions: [],
@@ -504,11 +502,10 @@ export async function checkUsernameAvailability(username: string): Promise<Usern
     }
 
     const data = await response.json();
-    console.log('🔐 Username check response:', data);
 
     return data;
   } catch (error) {
-    console.error('🔐 Username check error:', error);
+    // Handle error silently
     
     // Handle different types of errors
     if (error instanceof Error) {

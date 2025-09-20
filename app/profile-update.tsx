@@ -3,28 +3,28 @@ import { ModernTextInput } from '@/components/ui/ModernTextInput';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { validateIndianMobile } from '@/constants/Api';
 import { useAuth } from '@/contexts/AuthContext';
-import { getAvatarProps, getInitialsBackgroundColor } from '@/utils/avatarUtils';
+import { getAvatarProps, getInitialsBackgroundColor, parseLocalPhoneNumber } from '@/utils/avatarUtils';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    Dimensions,
-    Image,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Alert,
+  Dimensions,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
 
 export default function ProfileUpdateScreen() {
-  const { user, updateProfile } = useAuth();
+  const { user, updateProfile, refreshUser } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccessNotification, setShowSuccessNotification] = useState(false);
   const [showErrorNotification, setShowErrorNotification] = useState(false);
@@ -46,38 +46,28 @@ export default function ProfileUpdateScreen() {
   useEffect(() => {
     if (user) {
       setName(user.name || '');
-      // Remove +91 prefix if present, keep only 10 digits
-      let mobileNumber = '';
-      if (user.mobile) {
-        // Remove any prefix (+91, +1, etc.) and keep only digits
-        mobileNumber = user.mobile.replace(/^\+[0-9]+/, '').replace(/\D/g, '');
-        // Ensure we only have 10 digits
-        mobileNumber = mobileNumber.slice(0, 10);
-      }
+      // Parse phone number to remove country code
+      const mobileNumber = user.mobile ? parseLocalPhoneNumber(user.mobile).slice(0, 10) : '';
       setMobile(mobileNumber);
       setProfilePicture(user.profile_picture || null);
-      console.log('🔍 Profile update - User data:', {
-        name: user.name,
-        mobile: user.mobile,
-        processedMobile: mobileNumber,
-        profile_picture: user.profile_picture
-      });
     }
   }, [user]);
 
-  // Fetch fresh profile data when component mounts
+  // Fetch fresh profile data when component mounts (only once)
   useEffect(() => {
     const fetchProfileData = async () => {
       try {
-        console.log('🔍 Fetching fresh profile data for update screen');
-        // The user data will be updated through AuthContext when needed
+        await refreshUser(); // Call the get profile API to get latest data
       } catch (error) {
-        console.error('Error fetching profile data:', error);
+        // Handle error silently
+        // Don't show error to user as this is a background refresh
+        // The form will still work with existing user data
       }
     };
     
     fetchProfileData();
-  }, []);
+  }, []); // Empty dependency array - only run once on mount
+  // Note: refreshUser is stable from AuthContext, so no need to include it in dependencies
 
   const handleNameChange = (text: string) => {
     setName(text);
@@ -148,7 +138,7 @@ export default function ProfileUpdateScreen() {
         setImageLoadError(false);
       }
     } catch (error) {
-      console.error('Error picking image:', error);
+      // Handle image picker error silently
       Alert.alert('Error', 'Failed to pick image. Please try again.');
     }
   };
@@ -185,7 +175,6 @@ export default function ProfileUpdateScreen() {
         profileData.profile_picture = profilePicture;
       }
 
-      console.log('🔍 Updating profile with data:', profileData);
 
       // Use AuthContext updateProfile method
       const error = await updateProfile(profileData);
@@ -203,7 +192,7 @@ export default function ProfileUpdateScreen() {
       }, 2000);
 
     } catch (error) {
-      console.error('Profile update error:', error);
+      // Handle profile update error
       setErrorMessage(error instanceof Error ? error.message : 'Failed to update profile');
       setShowErrorNotification(true);
     } finally {
@@ -216,14 +205,8 @@ export default function ProfileUpdateScreen() {
     // Reset form to original values
     if (user) {
       setName(user.name || '');
-      // Remove +91 prefix if present, keep only 10 digits
-      let mobileNumber = '';
-      if (user.mobile) {
-        // Remove any prefix (+91, +1, etc.) and keep only digits
-        mobileNumber = user.mobile.replace(/^\+[0-9]+/, '').replace(/\D/g, '');
-        // Ensure we only have 10 digits
-        mobileNumber = mobileNumber.slice(0, 10);
-      }
+      // Parse phone number to remove country code
+      const mobileNumber = user.mobile ? parseLocalPhoneNumber(user.mobile).slice(0, 10) : '';
       setMobile(mobileNumber);
       setProfilePicture(user.profile_picture || null);
     }
@@ -253,8 +236,6 @@ export default function ProfileUpdateScreen() {
 
         {/* Profile Picture Section */}
         <View style={styles.profilePictureSection}>
-          <Text style={styles.sectionTitle}>Profile Picture</Text>
-          
           <View style={styles.profilePictureContainer}>
             <View style={styles.profilePictureWrapper}>
               {profilePicture && !imageLoadError ? (
@@ -310,7 +291,6 @@ export default function ProfileUpdateScreen() {
             onChangeText={handleNameChange}
             error={nameError}
             autoCapitalize="words"
-            autoCorrect={false}
           />
 
           {/* Email Field (Read-only) */}
@@ -319,7 +299,7 @@ export default function ProfileUpdateScreen() {
               icon="mail"
               placeholder="Email Address"
               value={user?.email || ''}
-              editable={false}
+              onChangeText={() => {}}
               style={styles.readOnlyInput}
             />
             <Text style={styles.readOnlyNote}>
@@ -352,7 +332,6 @@ export default function ProfileUpdateScreen() {
           <PrimaryButton
             title={isLoading ? "Updating..." : "Update Profile"}
             onPress={handleUpdateProfile}
-            loading={isLoading}
             style={styles.updateButton}
           />
         </View>
@@ -361,6 +340,7 @@ export default function ProfileUpdateScreen() {
       {/* Notifications */}
       <AutoDismissNotification
         visible={showSuccessNotification}
+        title="Success"
         message="Profile updated successfully!"
         type="success"
         onDismiss={() => setShowSuccessNotification(false)}
@@ -368,6 +348,7 @@ export default function ProfileUpdateScreen() {
 
       <AutoDismissNotification
         visible={showErrorNotification}
+        title="Error"
         message={errorMessage}
         type="error"
         onDismiss={() => setShowErrorNotification(false)}

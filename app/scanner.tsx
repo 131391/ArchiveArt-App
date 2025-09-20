@@ -49,12 +49,12 @@ export default function ScannerScreen() {
   }, [scanAnim]);
 
   useEffect(() => {
-    console.log('📷 Permission status:', permission);
+
     if (!permission || !permission.granted) {
-      console.log('📷 Requesting camera permission...');
+
       requestPermission();
     } else {
-      console.log('📷 Camera permission granted');
+
     }
   }, [permission]);
 
@@ -77,7 +77,7 @@ export default function ScannerScreen() {
     if (isReady && cameraInitialized && !isScanning && !hasAutoCaptured && !hasNavigatedAway) {
       // Give camera more time to stabilize on iOS - increased delay for production builds
       const timer = setTimeout(() => {
-        console.log('⏰ Auto-capture timer triggered');
+
         handleAutoCapture();
       }, 3000); // Reduced to 3000ms but ensure camera is initialized
       
@@ -101,11 +101,11 @@ export default function ScannerScreen() {
   // Reset camera state when screen comes into focus (e.g., returning from video player)
   useFocusEffect(
     useCallback(() => {
-      console.log('📷 Scanner screen focused - hasNavigatedAway:', hasNavigatedAway);
+
 
       // Only reset if we actually navigated away and came back
       if (hasNavigatedAway) {
-        console.log('📷 Returning from another screen - resetting camera state');
+
 
         // Reset all camera-related states
         setIsReady(false);
@@ -131,7 +131,7 @@ export default function ScannerScreen() {
         // Small delay to ensure camera can reinitialize properly
         const resetTimer = setTimeout(() => {
           setHasNavigatedAway(false); // Reset the flag
-          console.log('📷 Camera state reset completed');
+
         }, 200);
 
         return () => {
@@ -139,7 +139,7 @@ export default function ScannerScreen() {
         };
       } else {
         // First time loading or already on this screen
-        console.log('📷 First time loading or already on scanner screen');
+
       }
     }, [autoCaptureTimer, hasNavigatedAway])
   );
@@ -147,7 +147,7 @@ export default function ScannerScreen() {
   const handleAutoCapture = async () => {
     if (isScanning) return;
 
-    console.log('🤖 Auto-capturing image...');
+
     setHasAutoCaptured(true);
     await captureAndProcessImage();
   };
@@ -155,11 +155,11 @@ export default function ScannerScreen() {
   const captureAndProcessImage = async () => {
     if (isScanning) return;
     if (!permission?.granted || !isReady || !cameraInitialized) {
-      console.log('⏳ Camera not ready or permission not granted - isReady:', isReady, 'cameraInitialized:', cameraInitialized, 'permission:', permission?.granted);
+
       return;
     }
 
-    console.log('🔍 Starting scan process...');
+
     setIsScanning(true);
     setIsProcessing(true);
     setProgress(0);
@@ -169,16 +169,16 @@ export default function ScannerScreen() {
 
     try {
       // Capture image then send as multipart/form-data
-      console.log('📸 Capturing image...');
+
       const photo = await (async () => {
         const cam = cameraRef.current;
         if (!cam) {
-          console.log('❌ Camera ref is null - retrying in 1 second...');
+
           // Wait a bit and try again
           await new Promise(resolve => setTimeout(resolve, 1000));
           const retryCam = cameraRef.current;
           if (!retryCam) {
-            console.log('❌ Camera ref still null after retry');
+
             return null;
           }
           return retryCam;
@@ -189,51 +189,51 @@ export default function ScannerScreen() {
           let result = null;
 
           // Debug: Log what methods are available on the camera ref
-          console.log('🔍 Camera ref type:', typeof cam);
-          console.log('🔍 Camera ref methods:', Object.getOwnPropertyNames(cam));
-          console.log('🔍 Camera ref prototype:', Object.getOwnPropertyNames(Object.getPrototypeOf(cam)));
+
+
+
 
           // Try different method names that might be available
           const possibleMethods = ['takePictureAsync', 'takePicture', 'captureAsync', 'capture'];
 
           for (const methodName of possibleMethods) {
             if (typeof cam[methodName] === 'function') {
-              console.log(`✅ Found method: ${methodName}`);
+
               try {
                 result = await cam[methodName]({
         quality: 0.8,
         base64: false,
                   exif: false
                 });
-                console.log(`✅ Camera capture successful using ${methodName}:`, result);
+
                 break;
               } catch (methodError) {
-                console.log(`⚠️ Method ${methodName} failed:`, methodError);
+
                 continue;
               }
             }
           }
 
           if (!result) {
-            console.log('❌ No working camera capture method found');
+
             return null;
           }
 
           return result;
         } catch (error) {
-          console.log('❌ Camera capture error:', error);
+
           return null;
         }
       })();
 
       if (!photo || !('uri' in photo) || !photo.uri) {
-        console.log('❌ Failed to capture image - photo object:', photo);
-        console.log('❌ Camera state - isReady:', isReady, 'cameraInitialized:', cameraInitialized, 'permission granted:', permission?.granted);
-        console.log('🔄 Retry count:', retryCount, 'Max retries:', maxRetries);
+
+
+
 
         // Retry logic with better state management
         if (retryCount < maxRetries) {
-          console.log('🔄 Retrying capture in 2 seconds...');
+
           setRetryCount(prev => prev + 1);
           // Reset scanning state before retry
           setIsScanning(false);
@@ -246,11 +246,11 @@ export default function ScannerScreen() {
         }
 
         // Show centering warning only for camera capture issues
-        console.log('⚠️ Camera capture issue - centering warning');
+
         return;
       }
 
-      console.log('✅ Image captured successfully:', photo.uri);
+
 
       // Use captured image directly; keep quality low to reduce size
       const uploadUri = (photo as any).uri as string;
@@ -263,13 +263,13 @@ export default function ScannerScreen() {
       form.append('image', file);
 
       const apiUrl = buildUrl(API_ENDPOINTS.MEDIA.MATCH);
-      console.log('🌐 Hitting API:', apiUrl);
-      console.log('📤 Request payload:', { threshold: '5', image: 'file object' });
-      console.log('🔐 MOCK_MODE:', API_CONFIG.MOCK_MODE);
-      console.log('🔐 BASE_URL:', API_CONFIG.BASE_URL);
+
+
+
+
       
       // Log FormData contents
-      console.log('📤 FormData prepared with image and threshold');
+
 
       const res = await AuthService.authenticatedRequest(API_ENDPOINTS.MEDIA.MATCH, {
         method: 'POST',
@@ -280,48 +280,48 @@ export default function ScannerScreen() {
         body: form as any,
       });
 
-      console.log('📡 API Response Status:', res.status, res.statusText);
-      console.log('📡 API Response OK:', res.ok);
-      console.log('📡 API Response Type:', res.type);
-      console.log('📡 API Response URL:', res.url);
+
+
+
+
       
       try {
         const headersObj: Record<string, string> = {};
         res.headers.forEach((value, key) => {
           headersObj[key] = value;
         });
-        console.log('📡 API Response Headers:', JSON.stringify(headersObj, null, 2));
+
       } catch (headerError) {
-        console.log('❌ Error reading response headers:', headerError);
+
       }
 
       // Try to get response text first to see raw response
       let responseText = '';
       try {
         responseText = await res.clone().text();
-        console.log('📥 API Raw Response Text:', responseText);
+
       } catch (textError) {
-        console.log('❌ Error reading response text:', textError);
+
       }
 
       const json = await res.json().catch((parseError) => {
-        console.log('❌ Failed to parse JSON response:', parseError);
-        console.log('❌ Raw response that failed to parse:', responseText);
+
+
         return null;
       });
 
-      console.log('📥 API Response JSON:', JSON.stringify(json, null, 2));
-      console.log('📥 API Response Type Check:', typeof json);
-      console.log('📥 API Response Keys:', json ? Object.keys(json) : 'null');
+
+
+
 
       if (!res.ok || !json?.success) {
-        console.log('❌ API request failed or returned error');
+
         setHasNavigatedAway(true);
         try {
           router.push('/no-match');
-          console.log('✅ Navigation to no-match successful');
+
         } catch (navError) {
-          console.log('❌ Navigation error:', navError);
+
           router.replace('/no-match');
         }
         return;
@@ -329,21 +329,21 @@ export default function ScannerScreen() {
 
       const match = json.match || (Array.isArray(json.matches) && json.matches.length > 0 ? json.matches[0] : null);
       if (!match) {
-        console.log('❌ No matches found in response');
+
         setHasNavigatedAway(true);
         try {
           router.push('/no-match');
-          console.log('✅ Navigation to no-match successful');
+
         } catch (navError) {
-          console.log('❌ Navigation error:', navError);
+
           router.replace('/no-match');
         }
         return;
       }
 
-      console.log('✅ Match found:', match);
+
       const mediaType = (match.media_type || '').toLowerCase();
-      console.log('🔍 Raw match data:', JSON.stringify(match, null, 2));
+
       // Build full media URL - API returns file_path like "filename.mp4" or "/uploads/media/filename.mp4"
       const mediaUrl = match.file_path
         ? (match.file_path.startsWith('http')
@@ -352,34 +352,34 @@ export default function ScannerScreen() {
             ? `${API_CONFIG.BASE_URL}${match.file_path}`
             : `${API_CONFIG.BASE_URL}/uploads/media/${match.file_path}`)
         : '';
-      console.log('🎬 Navigating to media player with:', { url: mediaUrl, type: mediaType });
-      console.log('🔍 Debug - file_path:', match.file_path, 'BASE_URL:', API_CONFIG.BASE_URL);
-      console.log('🔍 Debug - constructed mediaUrl:', mediaUrl);
-      console.log('🔍 Debug - mediaType:', mediaType);
+
+
+
+
       
       // Validate URL construction
       try {
         new URL(mediaUrl);
-        console.log('✅ URL validation passed:', mediaUrl);
+
       } catch (urlError) {
-        console.log('❌ URL validation failed:', urlError);
-        console.log('❌ Invalid URL:', mediaUrl);
-        console.log('❌ file_path was:', match.file_path);
-        console.log('❌ BASE_URL was:', API_CONFIG.BASE_URL);
+
+
+
+
       }
 
       // Set flag to indicate we're navigating away
       setHasNavigatedAway(true);
       try {
         router.push({ pathname: '/media-player', params: { url: mediaUrl, type: mediaType } });
-        console.log('✅ Navigation to media player successful');
+
       } catch (navError) {
-        console.log('❌ Navigation error:', navError);
+
         // Fallback navigation
         router.replace({ pathname: '/media-player', params: { url: mediaUrl, type: mediaType } });
       }
     } catch (e) {
-      console.log('❌ Scan process error:', e);
+
       setHasNavigatedAway(true);
       router.push('/no-match');
     } finally {
@@ -387,14 +387,14 @@ export default function ScannerScreen() {
       setIsProcessing(false);
       setProgress(100);
       clearInterval(progTimer);
-      console.log('🏁 Scan process completed');
+
     }
   };
 
   const processSelectedImage = async (imageUri: string) => {
     if (isScanning) return;
 
-    console.log('🔍 Starting API call with selected image...');
+
     setIsScanning(true);
 
     try {
@@ -410,8 +410,8 @@ export default function ScannerScreen() {
       form.append('image', file);
 
       const galleryApiUrl = buildUrl(API_ENDPOINTS.MEDIA.MATCH);
-      console.log('🌐 Hitting API with selected image:', galleryApiUrl);
-      console.log('📤 Request payload:', { threshold: '5', image: 'file object' });
+
+
 
       setIsProcessing(true);
       setProgress(0);
@@ -420,12 +420,12 @@ export default function ScannerScreen() {
       }, 200);
 
       const selectedImageApiUrl = buildUrl(API_ENDPOINTS.MEDIA.MATCH);
-      console.log('🌐 Hitting API (selected image):', selectedImageApiUrl);
-      console.log('🔐 MOCK_MODE:', API_CONFIG.MOCK_MODE);
-      console.log('🔐 BASE_URL:', API_CONFIG.BASE_URL);
+
+
+
       
       // Log FormData contents for selected image
-      console.log('📤 FormData prepared with selected image and threshold');
+
 
       const apiRes = await AuthService.authenticatedRequest(API_ENDPOINTS.MEDIA.MATCH, {
         method: 'POST',
@@ -436,48 +436,48 @@ export default function ScannerScreen() {
         body: form as any,
       });
 
-      console.log('📡 API Response Status (selected image):', apiRes.status, apiRes.statusText);
-      console.log('📡 API Response OK (selected image):', apiRes.ok);
-      console.log('📡 API Response Type (selected image):', apiRes.type);
-      console.log('📡 API Response URL (selected image):', apiRes.url);
+
+
+
+
       
       try {
         const headersObj2: Record<string, string> = {};
         apiRes.headers.forEach((value, key) => {
           headersObj2[key] = value;
         });
-        console.log('📡 API Response Headers (selected image):', JSON.stringify(headersObj2, null, 2));
+
       } catch (headerError) {
-        console.log('❌ Error reading response headers (selected image):', headerError);
+
       }
 
       // Try to get response text first to see raw response
       let responseText2 = '';
       try {
         responseText2 = await apiRes.clone().text();
-        console.log('📥 API Raw Response Text (selected image):', responseText2);
+
       } catch (textError) {
-        console.log('❌ Error reading response text (selected image):', textError);
+
       }
 
       const json = await apiRes.json().catch((parseError) => {
-        console.log('❌ Failed to parse JSON response (selected image):', parseError);
-        console.log('❌ Raw response that failed to parse (selected image):', responseText2);
+
+
         return null;
       });
 
-      console.log('📥 API Response JSON (selected image):', JSON.stringify(json, null, 2));
-      console.log('📥 API Response Type Check (selected image):', typeof json);
-      console.log('📥 API Response Keys (selected image):', json ? Object.keys(json) : 'null');
+
+
+
 
       if (!apiRes.ok || !json?.success) {
-        console.log('❌ API request failed or returned error');
+
         setHasNavigatedAway(true);
         try {
           router.push('/no-match');
-          console.log('✅ Navigation to no-match successful');
+
         } catch (navError) {
-          console.log('❌ Navigation error:', navError);
+
           router.replace('/no-match');
         }
         return;
@@ -485,21 +485,21 @@ export default function ScannerScreen() {
 
       const match = json.match || (Array.isArray(json.matches) && json.matches.length > 0 ? json.matches[0] : null);
       if (!match) {
-        console.log('❌ No matches found in response');
+
         setHasNavigatedAway(true);
         try {
           router.push('/no-match');
-          console.log('✅ Navigation to no-match successful');
+
         } catch (navError) {
-          console.log('❌ Navigation error:', navError);
+
           router.replace('/no-match');
         }
         return;
       }
 
-      console.log('✅ Match found:', match);
+
       const mediaType = (match.media_type || '').toLowerCase();
-      console.log('🔍 Raw match data:', JSON.stringify(match, null, 2));
+
       // Build full media URL - API returns file_path like "filename.mp4" or "/uploads/media/filename.mp4"
       const mediaUrl = match.file_path
         ? (match.file_path.startsWith('http')
@@ -508,27 +508,27 @@ export default function ScannerScreen() {
             ? `${API_CONFIG.BASE_URL}${match.file_path}`
             : `${API_CONFIG.BASE_URL}/uploads/media/${match.file_path}`)
         : '';
-      console.log('🎬 Navigating to media player with:', { url: mediaUrl, type: mediaType });
-      console.log('🔍 Debug - file_path:', match.file_path, 'BASE_URL:', API_CONFIG.BASE_URL);
-      console.log('🔍 Debug - constructed mediaUrl:', mediaUrl);
-      console.log('🔍 Debug - mediaType:', mediaType);
+
+
+
+
       
       // Validate URL construction
       try {
         new URL(mediaUrl);
-        console.log('✅ URL validation passed:', mediaUrl);
+
       } catch (urlError) {
-        console.log('❌ URL validation failed:', urlError);
-        console.log('❌ Invalid URL:', mediaUrl);
-        console.log('❌ file_path was:', match.file_path);
-        console.log('❌ BASE_URL was:', API_CONFIG.BASE_URL);
+
+
+
+
       }
 
       // Set flag to indicate we're navigating away
       setHasNavigatedAway(true);
       router.push({ pathname: '/media-player', params: { url: mediaUrl, type: mediaType } });
     } catch (e) {
-      console.log('❌ API call error with selected image:', e);
+
       setHasNavigatedAway(true);
       router.push('/no-match');
     } finally {
@@ -538,11 +538,11 @@ export default function ScannerScreen() {
       // Clear any possible timer from above block
       // We defensively clear multiple times; safe if undefined
       try { /* noop */ } finally {}
-      console.log('🏁 Image picker API call completed');
+
     }
   };
 
-  console.log('📷 Rendering scanner screen - permission:', permission?.granted, 'isReady:', isReady, 'cameraInitialized:', cameraInitialized);
+
 
   return (
     <AuthGuard>
@@ -560,19 +560,19 @@ export default function ScannerScreen() {
           key={cameraKey}
             style={StyleSheet.absoluteFill}
             onCameraReady={() => {
-              console.log('📷 Camera is ready');
+
               // Minimal delay for better user experience
               setTimeout(() => {
                 setIsReady(true);
                 setCameraInitialized(true);
                 setIsReinitializing(false);
-                console.log('📷 Camera ready state set to true and initialized');
+
               }, 300);
             }}
             onMountError={(error) => {
-              console.log('❌ Camera mount error:', error);
+
               setCameraInitialized(false);
-              console.log('⚠️ Camera capture issue - centering warning');
+
             }}
             autofocus="on"
             enableTorch={isTorchOn}
@@ -607,7 +607,7 @@ export default function ScannerScreen() {
                 style={[styles.circleBtn, isScanning && { opacity: 0.6 }]}
                 disabled={isScanning || !cameraInitialized}
                 onPress={() => {
-                  console.log('📸 Manual capture triggered');
+
                   setHasAutoCaptured(true); // Prevent auto-capture from interfering
                   captureAndProcessImage();
                 }}
@@ -620,16 +620,16 @@ export default function ScannerScreen() {
                 onPress={async () => {
                   if (isScanning) return;
 
-                  console.log('📁 Opening image picker...');
+
 
                   // Request permissions first
                   const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
                   if (status !== 'granted') {
-                    console.log('❌ Media library permission denied');
+
                     return;
                   }
 
-                  console.log('✅ Media library permission granted');
+
                   const res = await ImagePicker.launchImageLibraryAsync({
                     mediaTypes: ImagePicker.MediaTypeOptions.Images,
                     allowsEditing: false,
@@ -638,12 +638,12 @@ export default function ScannerScreen() {
 
                   if (!res.canceled && res.assets?.[0]?.uri) {
                     const selectedImage = res.assets[0];
-                    console.log('📁 Image selected from library:', selectedImage.uri);
+
 
                     // Process selected image using the same function
                     await processSelectedImage(selectedImage.uri);
                   } else {
-                    console.log('📁 Image picker canceled or no image selected');
+
                   }
                 }}
               >

@@ -1,9 +1,9 @@
 import { useAuth } from '@/contexts/AuthContext';
-import { getAvatarProps, getInitialsBackgroundColor } from '@/utils/avatarUtils';
+import { getAvatarProps } from '@/utils/avatarUtils';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { ActivityIndicator, Dimensions, Image, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 
 export default function WelcomeScreen() {
@@ -16,9 +16,6 @@ export default function WelcomeScreen() {
   const avatarProps = user ? getAvatarProps(user) : null;
 
   // No automatic redirect - show profile when authenticated, login when not
-  useEffect(() => {
-    console.log('🏠 Welcome screen - isAuthenticated:', isAuthenticated, 'isLoading:', isLoading, 'user:', user?.name);
-  }, [isAuthenticated, isLoading, user]);
 
   // Show loading screen while checking authentication
   if (isLoading) {
@@ -51,19 +48,14 @@ export default function WelcomeScreen() {
                     source={{ uri: avatarProps.profilePictureUrl! }}
                     style={styles.profileImage}
                     onError={() => {
-                      console.log('Profile image failed to load, showing initials');
                       setImageLoadError(true);
                     }}
                   />
                 ) : (
-                  <View style={[
-                    styles.profileInitialsContainer,
-                    { backgroundColor: getInitialsBackgroundColor(user?.id || 0) }
-                  ]}>
-                    <Text style={styles.profileInitials}>
-                      {avatarProps.initials}
-                    </Text>
-                  </View>
+                  <Image 
+                    source={avatarProps.defaultAvatarUrl}
+                    style={styles.profileImage}
+                  />
                 )}
                 <View style={styles.profileImageBorder} />
               </View>
