@@ -32,6 +32,16 @@ export default function ScannerScreen() {
   const [hasNavigatedAway, setHasNavigatedAway] = useState(false);
   const [countdown, setCountdown] = useState(0);
 
+  // Cleanup function to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      // Cleanup any pending timers when component unmounts
+      if (autoCaptureTimer) {
+        clearTimeout(autoCaptureTimer);
+      }
+    };
+  }, [autoCaptureTimer]);
+
   // Animation values
   const scanLineAnim = useRef(new Animated.Value(0)).current;
   const cornerPulseAnim = useRef(new Animated.Value(1)).current;
@@ -154,7 +164,8 @@ export default function ScannerScreen() {
 
   // Auto-capture with countdown - only once per session
   useEffect(() => {
-    if (isScanning && !hasAutoCaptured && !isProcessing && isReady) {
+    // Don't start auto-capture if there's an error, warning, or processing
+    if (isScanning && !hasAutoCaptured && !isProcessing && isReady && !showWarning && !errorMessage && progress === 0) {
       console.log('📸 Starting auto-capture countdown...');
       
       // Start countdown from 5 seconds for better focus
@@ -173,9 +184,11 @@ export default function ScannerScreen() {
       
       // Auto-capture timer - only happens once
       const timer = setTimeout(() => {
-        if (isScanning && !hasAutoCaptured && !isProcessing && isReady) {
+        if (isScanning && !hasAutoCaptured && !isProcessing && isReady && !showWarning && !errorMessage && progress === 0) {
           console.log('📸 Auto-capturing image...');
           handleCapture();
+        } else {
+          console.log('📸 Auto-capture cancelled - conditions not met');
         }
         clearInterval(countdownInterval);
       }, 5000); // Auto-capture after 5 seconds for better focus
@@ -188,11 +201,19 @@ export default function ScannerScreen() {
       };
     } else {
       setCountdown(0);
+      // Clear any existing timer if conditions are not met
+      if (autoCaptureTimer) {
+        clearTimeout(autoCaptureTimer);
+        setAutoCaptureTimer(null);
+      }
     }
-  }, [isScanning, hasAutoCaptured, isProcessing, isReady]);
+  }, [isScanning, hasAutoCaptured, isProcessing, isReady, showWarning, errorMessage, progress]);
 
   const handleCapture = async () => {
-    if (!cameraRef.current || isProcessing || hasAutoCaptured) return;
+    if (!cameraRef.current || isProcessing || hasAutoCaptured || showWarning || errorMessage || progress > 0) {
+      console.log('📸 Capture blocked - conditions not met (processing or progress active)');
+      return;
+    }
 
     try {
       // Capture button press animation
@@ -248,6 +269,17 @@ export default function ScannerScreen() {
     let timeoutId: NodeJS.Timeout | null = null;
     
     try {
+      // CRITICAL: Stop all background scanning immediately when API call starts
+      console.log('🔍 Stopping background scanning for API call...');
+      setIsScanning(false);
+      setCountdown(0);
+      
+      // Clear any pending auto-capture timer
+      if (autoCaptureTimer) {
+        clearTimeout(autoCaptureTimer);
+        setAutoCaptureTimer(null);
+      }
+      
       setProgress(0);
       
       // Simulate processing progress with better handling
@@ -258,7 +290,7 @@ export default function ScannerScreen() {
           }
           return prev + 4;
         });
-      }, 200);
+      }, 200) as unknown as NodeJS.Timeout;
 
       const token = await AuthService.getAccessToken();
       if (!token) {
@@ -267,7 +299,9 @@ export default function ScannerScreen() {
 
       console.log('🔍 Processing image:', imageUri);
       console.log('🔍 API endpoint:', buildUrl(API_ENDPOINTS.MEDIA.MATCH));
+      console.log('🔍 API base URL:', API_CONFIG.BASE_URL);
       console.log('🔍 Token exists:', !!token);
+      console.log('🔍 FormData prepared with image');
 
       // Clear progress interval before API call
       if (progressInterval) {
@@ -285,37 +319,53 @@ export default function ScannerScreen() {
         fileName: 'scan.jpg',
       } as any);
 
-      // Add timeout to prevent hanging
+      // Add timeout to prevent hanging - increased to 30 seconds
       const controller = new AbortController();
       timeoutId = setTimeout(() => {
-        console.log('🔍 Request timeout - aborting');
+        console.log('🔍 Request timeout - aborting after 30 seconds');
         controller.abort();
-      }, 15000); // Reduced to 15 second timeout
+      }, 30000) as unknown as NodeJS.Timeout; // 30 second timeout
 
       console.log('🔍 Starting API request...');
       setProgress(90); // Set to 90% when request is sent
 
-      // First, test if the server is reachable with a simple GET request
+      // Test basic connectivity first (without AbortController to avoid conflicts)
       try {
-        console.log('🔍 Testing server connectivity...');
-        const testResponse = await fetch(buildUrl('/api/health'), {
+        console.log('🔍 Testing basic connectivity...');
+        const testController = new AbortController();
+        const testTimeout = setTimeout(() => testController.abort(), 5000);
+        
+        const testResponse = await fetch(API_CONFIG.BASE_URL, {
           method: 'GET',
-          signal: controller.signal,
+          signal: testController.signal,
         });
-        console.log('🔍 Health check response:', testResponse.status);
-      } catch (healthError) {
-        console.log('🔍 Health check failed, proceeding with main request:', healthError);
+        clearTimeout(testTimeout);
+        console.log('🔍 Connectivity test response:', testResponse.status);
+      } catch (connectError) {
+        console.log('🔍 Connectivity test failed:', connectError);
+        // Continue with main request anyway
       }
 
-      const response = await fetch(buildUrl(API_ENDPOINTS.MEDIA.MATCH), {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          // Don't set Content-Type for FormData - let the browser set it with boundary
-        },
-        body: formData,
-        signal: controller.signal,
-      });
+      // Go to main request with proper error handling
+      let response;
+      try {
+        response = await fetch(buildUrl(API_ENDPOINTS.MEDIA.MATCH), {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            // Don't set Content-Type for FormData - let the browser set it with boundary
+          },
+          body: formData,
+          signal: controller.signal,
+        });
+      } catch (fetchError) {
+        // Handle fetch errors specifically
+        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+          console.log('🔍 Request was aborted due to timeout');
+          throw new Error('Request timed out after 30 seconds. The server may be slow or unavailable.');
+        }
+        throw fetchError; // Re-throw other errors
+      }
 
       // Clear timeout since request completed
       if (timeoutId) {
@@ -386,37 +436,55 @@ export default function ScannerScreen() {
       }
     } catch (error) {
       console.error('🔍 Processing error:', error);
+      console.error('🔍 Error type:', error?.constructor?.name);
+      console.error('🔍 Error name:', (error as any)?.name);
+      console.error('🔍 Error message:', (error as any)?.message);
+      
+      // CRITICAL: Stop all scanning and timers immediately
+      setIsScanning(false);
+      setHasAutoCaptured(false);
+      setIsProcessing(false);
+      setProgress(0);
+      setCountdown(0);
       
       // Clear all intervals and timeouts
       if (progressInterval) {
         clearInterval(progressInterval);
+        progressInterval = null;
       }
       if (timeoutId) {
         clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+      if (autoCaptureTimer) {
+        clearTimeout(autoCaptureTimer);
+        setAutoCaptureTimer(null);
       }
       
       // Handle specific error types
       let errorMsg = 'An error occurred while processing the image';
       if (error instanceof Error) {
-        if (error.name === 'AbortError') {
-          errorMsg = 'Request timed out after 15 seconds. The server may be slow or unavailable.';
-        } else if (error.message.includes('Network') || error.message.includes('fetch')) {
+        if (error.name === 'AbortError' || error.message.includes('aborted')) {
+          errorMsg = 'Request timed out after 30 seconds. The server may be slow or unavailable.';
+        } else if (error.message.includes('Network') || error.message.includes('fetch') || error.message.includes('network')) {
           errorMsg = 'Network error. Please check your internet connection and try again.';
-        } else if (error.message.includes('token') || error.message.includes('auth')) {
+        } else if (error.message.includes('token') || error.message.includes('auth') || error.message.includes('unauthorized')) {
           errorMsg = 'Authentication error. Please login again.';
-        } else if (error.message.includes('Failed to process image')) {
+        } else if (error.message.includes('Failed to process image') || error.message.includes('server')) {
           errorMsg = 'Server error. Please try again or contact support.';
+        } else if (error.message.includes('timeout')) {
+          errorMsg = 'Request timed out. Please check your internet connection and try again.';
         } else {
-          errorMsg = error.message;
+          errorMsg = error.message || 'An unexpected error occurred';
         }
+      } else if (typeof error === 'string') {
+        errorMsg = error;
       }
       
       console.log('🔍 Setting error message:', errorMsg);
+      console.log('🔍 Scanner stopped due to error - no background scanning');
       setErrorMessage(errorMsg);
       setShowWarning(true);
-      setIsProcessing(false);
-      setHasAutoCaptured(false);
-      setProgress(0);
       // No automatic timeout - user must manually tap "Try Again"
     }
   };
@@ -528,11 +596,11 @@ export default function ScannerScreen() {
             {/* Top Bar */}
             <View style={styles.topBar}>
               <TouchableOpacity 
-                style={styles.closeButton}
+                style={styles.topCloseButton}
                 onPress={() => router.back()}
               >
                 <View style={styles.closeButtonCircle}>
-                  <Ionicons name="close" size={20} color="white" />
+                  <Ionicons name="close" size={22} color="white" />
                 </View>
               </TouchableOpacity>
               
@@ -562,12 +630,14 @@ export default function ScannerScreen() {
             <TouchableOpacity 
               style={styles.scanningArea}
               onPress={() => {
-                if (!isScanning && isReady && !isProcessing) {
+                if (!isScanning && isReady && !isProcessing && !showWarning && !errorMessage && progress === 0) {
                   console.log('📸 Starting scanning manually...');
                   setIsScanning(true);
-                } else if (isScanning && !hasAutoCaptured && !isProcessing && isReady) {
+                } else if (isScanning && !hasAutoCaptured && !isProcessing && isReady && !showWarning && !errorMessage && progress === 0) {
                   console.log('📸 Manual capture during countdown...');
                   handleCapture();
+                } else {
+                  console.log('📸 Tap ignored - scanner in processing or error state');
                 }
               }}
               activeOpacity={0.8}
@@ -624,15 +694,22 @@ export default function ScannerScreen() {
 
               {/* Status Indicator */}
               <View style={styles.statusIndicator}>
-                <View style={[styles.statusDot, { backgroundColor: isReady ? '#10B981' : '#F59E0B' }]} />
+                <View style={[styles.statusDot, { 
+                  backgroundColor: errorMessage ? '#EF4444' : 
+                    showWarning ? '#F59E0B' : 
+                    isReady ? '#10B981' : '#F59E0B' 
+                }]} />
                 <Text style={styles.statusText}>
-                  {isReady ? (
-                    isScanning ? (
-                      hasAutoCaptured ? 'Processing...' : 
-                      countdown > 0 ? `Auto-capture in ${countdown}s` : 
-                      'Ready to Scan'
-                    ) : 'Tap to Start Scanning'
-                  ) : 'Focusing...'}
+                  {errorMessage ? 'Error - Tap Retry' :
+                    showWarning ? 'Warning - Check Message' :
+                    progress > 0 ? 'Processing Image...' :
+                    isReady ? (
+                      isScanning ? (
+                        hasAutoCaptured ? 'Processing...' : 
+                        countdown > 0 ? `Auto-capture in ${countdown}s` : 
+                        'Ready to Scan'
+                      ) : 'Tap to Start Scanning'
+                    ) : 'Focusing...'}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -801,8 +878,8 @@ const styles = StyleSheet.create({
     paddingTop: 50,
     paddingBottom: 20,
   },
-  closeButton: {
-    zIndex: 1,
+  topCloseButton: {
+    // No absolute positioning - let it flow naturally in the top bar
   },
   closeButtonCircle: {
     width: 40,
@@ -811,6 +888,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
     alignItems: 'center',
     justifyContent: 'center',
+    // Ensure perfect centering
+    display: 'flex',
   },
   topRightButtons: {
     flexDirection: 'row',
