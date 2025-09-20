@@ -1,25 +1,24 @@
-import { useAuth } from '@/contexts/AuthContext';
-import { getAvatarProps, getInitialsBackgroundColor } from '@/utils/avatarUtils';
-import { validateIndianMobile } from '@/constants/Api';
 import { AutoDismissNotification } from '@/components/ui/AutoDismissNotification';
 import { ModernTextInput } from '@/components/ui/ModernTextInput';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
+import { validateIndianMobile } from '@/constants/Api';
+import { useAuth } from '@/contexts/AuthContext';
+import { getAvatarProps, getInitialsBackgroundColor } from '@/utils/avatarUtils';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  Dimensions,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Alert,
+    Dimensions,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 
 const { width, height } = Dimensions.get('window');

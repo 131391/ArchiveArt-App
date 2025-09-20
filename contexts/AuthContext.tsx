@@ -1,6 +1,6 @@
 import AuthService, { GoogleAuthData, LoginCredentials, RegisterData, User } from '@/services/AuthService';
-import * as GoogleSignIn from '../config/google-signin';
 import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
+import * as GoogleSignIn from '../config/google-signin';
 
 interface AuthContextType {
   user: User | null;

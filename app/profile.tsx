@@ -2,7 +2,6 @@ import { WarningModal } from '@/components/ui/WarningModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { getAvatarProps, getInitialsBackgroundColor } from '@/utils/avatarUtils';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, Dimensions, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
