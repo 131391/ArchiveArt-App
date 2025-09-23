@@ -1,9 +1,10 @@
-import { API_CONFIG } from '@/constants/Api';
+import { getMediaUrl } from '@/constants/Api';
 import { Ionicons } from '@expo/vector-icons';
-import { Audio, ResizeMode, Video } from 'expo-av';
+import { useAudioPlayer } from 'expo-audio';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import * as ScreenOrientation from 'expo-screen-orientation';
+import { VideoView, useVideoPlayer } from 'expo-video';
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, BackHandler, Dimensions, Image, Pressable, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -11,15 +12,15 @@ const { width, height } = Dimensions.get('window');
 
 export default function MediaPlayerScreen() {
   const router = useRouter();
-  const videoRef = useRef<Video>(null);
-  const audioRef = useRef<Audio.Sound>(null);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
-  const [showControls, setShowControls] = useState(true);
+  const [showControls, setShowControls] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [isTitleExpanded, setIsTitleExpanded] = useState(false);
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const [orientation, setOrientation] = useState(ScreenOrientation.Orientation.PORTRAIT_UP);
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
   const [isLandscapeMode, setIsLandscapeMode] = useState(false);
@@ -28,7 +29,7 @@ export default function MediaPlayerScreen() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   
   // Auto-hide controls
-  const controlsOpacity = useRef(new Animated.Value(1)).current;
+  const controlsOpacity = useRef(new Animated.Value(0)).current;
   const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
@@ -40,26 +41,58 @@ export default function MediaPlayerScreen() {
   }>();
   
   // Enhanced URL extraction to handle audio from scanning responses
-  const getMediaUrl = () => {
+  const getMediaUrlFromParams = () => {
     const baseUrl = typeof params.url === 'string' ? params.url : '';
     const mediaData = params.mediaData ? JSON.parse(params.mediaData) : null;
     
     // Check for audio URL in mediaData first (from scanning response)
     if (mediaData?.audio_url) {
-      return mediaData.audio_url.startsWith('http') ? mediaData.audio_url : `${API_CONFIG.BASE_URL}${mediaData.audio_url}`;
+      return getMediaUrl(mediaData.audio_url) || '';
     }
     if (mediaData?.match?.audio_url) {
-      return mediaData.match.audio_url.startsWith('http') ? mediaData.match.audio_url : `${API_CONFIG.BASE_URL}${mediaData.match.audio_url}`;
+      return getMediaUrl(mediaData.match.audio_url) || '';
     }
     
     // Fallback to base URL
     return baseUrl;
   };
 
-  const url = getMediaUrl();
+  const url = getMediaUrlFromParams();
   const type = (typeof params.type === 'string' ? params.type : '').toLowerCase();
   const mediaData = params.mediaData ? JSON.parse(params.mediaData) : null;
   const imageUri = typeof params.imageUri === 'string' ? params.imageUri : '';
+  
+  // Initialize video and audio players
+  const videoPlayer = useVideoPlayer(url);
+  const audioPlayer = useAudioPlayer(url);
+  
+  // Configure player properties
+  useEffect(() => {
+    if (videoPlayer) {
+      videoPlayer.loop = true;
+      videoPlayer.muted = isMuted;
+    }
+  }, [videoPlayer, isMuted]);
+  
+  useEffect(() => {
+    if (audioPlayer) {
+      audioPlayer.loop = true;
+      audioPlayer.muted = isMuted;
+    }
+  }, [audioPlayer, isMuted]);
+
+  // Clear loading state when players are ready
+  useEffect(() => {
+    if (url && (videoPlayer || audioPlayer)) {
+      // Small delay to ensure players are properly initialized
+      const timer = setTimeout(() => {
+        setIsLoading(false);
+        setHasError(false);
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [url, videoPlayer, audioPlayer]);
   
   // Enhanced audio detection - check type, URL, and mediaData for audio content
   const isAudio = type.includes('audio') || 
@@ -71,12 +104,42 @@ export default function MediaPlayerScreen() {
                     mediaData.match?.type === 'audio'
                   ));
 
-  // Audio visualizer animations
+  // Enhanced audio visualizer animations - more bars for better effect
   const bar1Anim = useRef(new Animated.Value(0.3)).current;
   const bar2Anim = useRef(new Animated.Value(0.5)).current;
   const bar3Anim = useRef(new Animated.Value(0.4)).current;
   const bar4Anim = useRef(new Animated.Value(0.6)).current;
   const bar5Anim = useRef(new Animated.Value(0.3)).current;
+  const bar6Anim = useRef(new Animated.Value(0.7)).current;
+  const bar7Anim = useRef(new Animated.Value(0.4)).current;
+  const bar8Anim = useRef(new Animated.Value(0.5)).current;
+  const bar9Anim = useRef(new Animated.Value(0.6)).current;
+  const bar10Anim = useRef(new Animated.Value(0.3)).current;
+  const bar11Anim = useRef(new Animated.Value(0.8)).current;
+  const bar12Anim = useRef(new Animated.Value(0.4)).current;
+  
+  // Additional visual effects
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const rotationAnim = useRef(new Animated.Value(0)).current;
+  const glowAnim = useRef(new Animated.Value(0.5)).current;
+  
+  // Spectrum analyzer bars (smaller, more bars)
+  const spectrumBar1 = useRef(new Animated.Value(0.2)).current;
+  const spectrumBar2 = useRef(new Animated.Value(0.3)).current;
+  const spectrumBar3 = useRef(new Animated.Value(0.4)).current;
+  const spectrumBar4 = useRef(new Animated.Value(0.5)).current;
+  const spectrumBar5 = useRef(new Animated.Value(0.3)).current;
+  const spectrumBar6 = useRef(new Animated.Value(0.6)).current;
+  const spectrumBar7 = useRef(new Animated.Value(0.4)).current;
+  const spectrumBar8 = useRef(new Animated.Value(0.7)).current;
+  const spectrumBar9 = useRef(new Animated.Value(0.5)).current;
+  const spectrumBar10 = useRef(new Animated.Value(0.3)).current;
+  const spectrumBar11 = useRef(new Animated.Value(0.8)).current;
+  const spectrumBar12 = useRef(new Animated.Value(0.4)).current;
+  const spectrumBar13 = useRef(new Animated.Value(0.6)).current;
+  const spectrumBar14 = useRef(new Animated.Value(0.3)).current;
+  const spectrumBar15 = useRef(new Animated.Value(0.5)).current;
+  const spectrumBar16 = useRef(new Animated.Value(0.7)).current;
 
   // Auto-hide controls function
   const hideControlsAfterDelay = () => {
@@ -103,6 +166,26 @@ export default function MediaPlayerScreen() {
     hideControlsAfterDelay();
   };
 
+  const toggleControls = () => {
+    if (showControls) {
+      // Hide controls immediately
+      setShowControls(false);
+      Animated.timing(controlsOpacity, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+      // Clear any existing timeout
+      if (controlsTimeoutRef.current) {
+        clearTimeout(controlsTimeoutRef.current);
+        controlsTimeoutRef.current = null;
+      }
+    } else {
+      // Show controls and start auto-hide timer
+      showControlsWithDelay();
+    }
+  };
+
   useEffect(() => {
     // Only proceed if we have a URL or this is an audio type
     if (!url && !isAudio) {
@@ -127,23 +210,8 @@ export default function MediaPlayerScreen() {
             setIsLoadingAudio(false);
           }, 10000);
           
-          // Create new audio instance
-          const { sound } = await Audio.Sound.createAsync(
-            { uri: url },
-            { shouldPlay: false, isLooping: true, isMuted: isMuted },
-            (status) => {
-              // Handle playback status updates
-              if (status.isLoaded) {
-                if (status.didJustFinish) {
-                  setIsPlaying(false);
-                }
-                // Sync playing state with actual audio status
-                if (status.isPlaying !== undefined) {
-                  setIsPlaying(status.isPlaying);
-                }
-              }
-            }
-          );
+          // The audio player is already initialized with the URL
+          // Just need to play
           
           // Clear loading timeout since audio loaded successfully
           if (loadingTimeoutRef.current) {
@@ -151,18 +219,14 @@ export default function MediaPlayerScreen() {
             loadingTimeoutRef.current = null;
           }
           
-          // Set the audio reference
-          if (audioRef.current) {
-            await audioRef.current.unloadAsync();
-          }
-          audioRef.current = sound;
+          // Audio player is ready
           
           setIsLoading(false);
           setHasError(false);
           setIsLoadingAudio(false);
           
           // Auto-play audio
-          await sound.playAsync();
+          await audioPlayer.play();
           setIsPlaying(true);
         } catch (error) {
           // Clear loading timeout on error
@@ -192,21 +256,7 @@ export default function MediaPlayerScreen() {
             setIsLoadingAudio(false);
           }, 10000);
           
-          const { sound } = await Audio.Sound.createAsync(
-            { uri: url },
-            { shouldPlay: false, isLooping: true, isMuted: isMuted },
-            (status) => {
-              if (status.isLoaded) {
-                if (status.didJustFinish) {
-                  setIsPlaying(false);
-                }
-                // Sync playing state with actual audio status
-                if (status.isPlaying !== undefined) {
-                  setIsPlaying(status.isPlaying);
-                }
-              }
-            }
-          );
+          // The audio player is already initialized with the URL
           
           // Clear loading timeout since audio loaded successfully
           if (loadingTimeoutRef.current) {
@@ -214,15 +264,10 @@ export default function MediaPlayerScreen() {
             loadingTimeoutRef.current = null;
           }
           
-          if (audioRef.current) {
-            await audioRef.current.unloadAsync();
-          }
-          audioRef.current = sound;
-          
           setIsLoading(false);
           setHasError(false);
           setIsLoadingAudio(false);
-          await sound.playAsync();
+          await audioPlayer.play();
           setIsPlaying(true);
         } catch (error) {
           // Clear loading timeout on error
@@ -239,12 +284,9 @@ export default function MediaPlayerScreen() {
     };
 
     // Auto-play video when URL is available
-    if (url && !isAudio && videoRef.current) {
-      videoRef.current.playAsync().catch(error => {
-        // Handle video play error
-        setIsPlaying(false);
-      });
-    } else if (url && (isAudio || !videoRef.current)) {
+    if (url && !isAudio) {
+      videoPlayer.play();
+    } else if (url && isAudio) {
       // Load audio if detected as audio OR if no video ref (fallback)
       loadAudio();
     } else if (!url && isAudio) {
@@ -255,8 +297,7 @@ export default function MediaPlayerScreen() {
       setIsLoadingAudio(false);
     }
 
-    // Start auto-hide timer
-    hideControlsAfterDelay();
+    // Controls start hidden, will be shown on tap
 
     return () => {
       if (controlsTimeoutRef.current) {
@@ -269,21 +310,12 @@ export default function MediaPlayerScreen() {
     };
   }, [url, isAudio]);
 
-  useEffect(() => {
-    if (isAudio) {
-      Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
-    }
-  }, [isAudio]);
+  // Audio mode is handled automatically by expo-audio
 
   // Cleanup audio when component unmounts or when navigating away
   useEffect(() => {
     return () => {
-      // Clean up audio when component unmounts
-      if (audioRef.current) {
-        audioRef.current.unloadAsync().catch(() => {
-          // Ignore errors during cleanup
-        });
-      }
+      // Clean up is handled automatically by the players
       // Reset orientation if in fullscreen
       if (isFullscreen) {
         ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {
@@ -305,17 +337,9 @@ export default function MediaPlayerScreen() {
     React.useCallback(() => {
       // Screen is focused - audio can play
       return () => {
-        // Screen is losing focus - stop audio
-        if (audioRef.current) {
-          audioRef.current.stopAsync().catch(() => {
-            // Ignore errors during cleanup
-          });
-        }
-        if (videoRef.current) {
-          videoRef.current.stopAsync().catch(() => {
-            // Ignore errors during cleanup
-          });
-        }
+        // Screen is losing focus - just set playing state to false
+        // The players will handle cleanup automatically
+        setIsPlaying(false);
       };
     }, [])
   );
@@ -383,58 +407,141 @@ export default function MediaPlayerScreen() {
     };
   }, []);
 
-  // Audio visualizer animation
+  // Enhanced audio visualizer animation with more bars and effects
   useEffect(() => {
     if (isAudio && isPlaying) {
-      const createAnimation = (animValue: Animated.Value, delay: number) => {
+      const createBarAnimation = (animValue: Animated.Value, delay: number, baseDuration: number = 800) => {
         return Animated.loop(
           Animated.sequence([
             Animated.timing(animValue, {
-              toValue: 1,
-              duration: 800 + delay * 100,
+              toValue: 0.9 + Math.random() * 0.1, // Randomize peak height slightly
+              duration: baseDuration + delay * 50 + Math.random() * 200,
               useNativeDriver: false,
             }),
             Animated.timing(animValue, {
-              toValue: 0.3,
-              duration: 800 + delay * 100,
+              toValue: 0.2 + Math.random() * 0.2, // Randomize low height
+              duration: baseDuration + delay * 50 + Math.random() * 200,
               useNativeDriver: false,
             }),
           ])
         );
       };
 
-      const animations = [
-        createAnimation(bar1Anim, 0),
-        createAnimation(bar2Anim, 1),
-        createAnimation(bar3Anim, 2),
-        createAnimation(bar4Anim, 3),
-        createAnimation(bar5Anim, 4),
+      // Create animations for all main bars
+      const barAnimations = [
+        createBarAnimation(bar1Anim, 0, 600),
+        createBarAnimation(bar2Anim, 1, 700),
+        createBarAnimation(bar3Anim, 2, 800),
+        createBarAnimation(bar4Anim, 3, 650),
+        createBarAnimation(bar5Anim, 4, 750),
+        createBarAnimation(bar6Anim, 5, 600),
+        createBarAnimation(bar7Anim, 6, 700),
+        createBarAnimation(bar8Anim, 7, 800),
+        createBarAnimation(bar9Anim, 8, 650),
+        createBarAnimation(bar10Anim, 9, 750),
+        createBarAnimation(bar11Anim, 10, 600),
+        createBarAnimation(bar12Anim, 11, 700),
       ];
 
-      animations.forEach(anim => anim.start());
+      // Create faster animations for spectrum analyzer bars
+      const spectrumAnimations = [
+        createBarAnimation(spectrumBar1, 0, 300),
+        createBarAnimation(spectrumBar2, 1, 350),
+        createBarAnimation(spectrumBar3, 2, 400),
+        createBarAnimation(spectrumBar4, 3, 325),
+        createBarAnimation(spectrumBar5, 4, 375),
+        createBarAnimation(spectrumBar6, 5, 300),
+        createBarAnimation(spectrumBar7, 6, 350),
+        createBarAnimation(spectrumBar8, 7, 400),
+        createBarAnimation(spectrumBar9, 8, 325),
+        createBarAnimation(spectrumBar10, 9, 375),
+        createBarAnimation(spectrumBar11, 10, 300),
+        createBarAnimation(spectrumBar12, 11, 350),
+        createBarAnimation(spectrumBar13, 12, 400),
+        createBarAnimation(spectrumBar14, 13, 325),
+        createBarAnimation(spectrumBar15, 14, 375),
+        createBarAnimation(spectrumBar16, 15, 300),
+      ];
+
+      // Pulse animation for album art
+      const pulseAnimation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+
+      // Rotation animation for album art
+      const rotationAnimation = Animated.loop(
+        Animated.timing(rotationAnim, {
+          toValue: 1,
+          duration: 20000, // 20 seconds for full rotation
+          useNativeDriver: true,
+        })
+      );
+
+      // Glow animation for visualizer
+      const glowAnimation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(glowAnim, {
+            toValue: 1,
+            duration: 1500,
+            useNativeDriver: false,
+          }),
+          Animated.timing(glowAnim, {
+            toValue: 0.3,
+            duration: 1500,
+            useNativeDriver: false,
+          }),
+        ])
+      );
+
+      // Start all animations
+      barAnimations.forEach(anim => anim.start());
+      spectrumAnimations.forEach(anim => anim.start());
+      pulseAnimation.start();
+      rotationAnimation.start();
+      glowAnimation.start();
 
       return () => {
-        animations.forEach(anim => anim.stop());
+        barAnimations.forEach(anim => anim.stop());
+        spectrumAnimations.forEach(anim => anim.stop());
+        pulseAnimation.stop();
+        rotationAnimation.stop();
+        glowAnimation.stop();
       };
+    } else {
+      // Reset animations when not playing
+      pulseAnim.setValue(1);
+      rotationAnim.setValue(0);
+      glowAnim.setValue(0.5);
     }
-  }, [isAudio, isPlaying, bar1Anim, bar2Anim, bar3Anim, bar4Anim, bar5Anim]);
+  }, [isAudio, isPlaying, bar1Anim, bar2Anim, bar3Anim, bar4Anim, bar5Anim, bar6Anim, bar7Anim, bar8Anim, bar9Anim, bar10Anim, bar11Anim, bar12Anim, spectrumBar1, spectrumBar2, spectrumBar3, spectrumBar4, spectrumBar5, spectrumBar6, spectrumBar7, spectrumBar8, spectrumBar9, spectrumBar10, spectrumBar11, spectrumBar12, spectrumBar13, spectrumBar14, spectrumBar15, spectrumBar16, pulseAnim, rotationAnim, glowAnim]);
 
   const togglePlayPause = async () => {
     try {
-      if (isAudio && audioRef.current) {
+      if (isAudio) {
         if (isPlaying) {
-          await audioRef.current.pauseAsync();
+          audioPlayer.pause();
           setIsPlaying(false);
         } else {
-          await audioRef.current.playAsync();
+          audioPlayer.play();
           setIsPlaying(true);
         }
-      } else if (!isAudio && videoRef.current) {
+      } else if (!isAudio) {
         if (isPlaying) {
-          await videoRef.current.pauseAsync();
+          videoPlayer.pause();
           setIsPlaying(false);
         } else {
-          await videoRef.current.playAsync();
+          videoPlayer.play();
           setIsPlaying(true);
         }
       } else {
@@ -442,7 +549,9 @@ export default function MediaPlayerScreen() {
         setIsPlaying(!isPlaying);
       }
       // Show controls when toggling play/pause
-      showControlsWithDelay();
+      if (!showControls) {
+        showControlsWithDelay();
+      }
     } catch (error) {
       // Handle play/pause error - try to reset state
       setIsPlaying(false);
@@ -451,16 +560,18 @@ export default function MediaPlayerScreen() {
 
   const toggleMute = async () => {
     try {
-      if (isAudio && audioRef.current) {
-        await audioRef.current.setIsMutedAsync(!isMuted);
+      if (isAudio) {
+        audioPlayer.muted = !isMuted;
         setIsMuted(!isMuted);
-      } else if (!isAudio && videoRef.current) {
-        await videoRef.current.setIsMutedAsync(!isMuted);
+      } else if (!isAudio) {
+        videoPlayer.muted = !isMuted;
         setIsMuted(!isMuted);
       } else {
         setIsMuted(!isMuted);
       }
-      showControlsWithDelay();
+      if (!showControls) {
+        showControlsWithDelay();
+      }
     } catch (error) {
       // Handle mute error
       setIsMuted(!isMuted);
@@ -486,24 +597,8 @@ export default function MediaPlayerScreen() {
   };
 
   const handleBack = async () => {
-    // Stop and cleanup audio before navigating away
-    if (audioRef.current) {
-      try {
-        await audioRef.current.stopAsync();
-        await audioRef.current.unloadAsync();
-      } catch (error) {
-        // Ignore errors during cleanup
-      }
-    }
-    
-    // Stop video if playing
-    if (videoRef.current) {
-      try {
-        await videoRef.current.stopAsync();
-      } catch (error) {
-        // Ignore errors during cleanup
-      }
-    }
+    // Stop playback by setting state - players will handle cleanup
+    setIsPlaying(false);
 
     // Reset orientation if in fullscreen
     if (isFullscreen) {
@@ -523,19 +618,21 @@ export default function MediaPlayerScreen() {
     // First priority: Check for actual title and description from API response
     if (mediaData && mediaData.match) {
       const match = mediaData.match;
-      return {
+      const displayData = {
         title: match.title || match.name || match.actual_title || (isAudio ? "Audio Match" : "Matched Content"),
         collection: match.collection || (isAudio ? "Audio Collection" : "ArchivART Collection"),
-        description: match.description || match.actual_description || match.similarity?.description || 
-                   (isAudio ? `Audio similarity: ${match.similarity?.score ? (match.similarity.score * 100).toFixed(1) + '%' : 'N/A'}` : 
-                    `Similarity Score: ${match.similarity?.score ? (match.similarity.score * 100).toFixed(1) + '%' : 'N/A'}`),
+        description: match.description || '',
         environment: match.environment || (isAudio ? "Audio Archive" : "Digital Archive"),
         estimatedTime: match.estimatedTime || (isAudio ? "Audio Track" : "Variable"),
         rating: `${match.similarity?.score ? (match.similarity.score * 5).toFixed(1) : '4.8'}/5`,
-        image: match.scanning_image ? `${API_CONFIG.BASE_URL}/uploads/media/${match.scanning_image}` : 
-               match.audio_thumbnail ? `${API_CONFIG.BASE_URL}/uploads/media/${match.audio_thumbnail}` :
-               match.image || "https://images.unsplash.com/photo-1446776877081-d282a0f896e2?w=400&h=300&fit=crop"
+        image: getMediaUrl(match.scanning_image_url) || 
+               getMediaUrl(match.scanning_image) || 
+               getMediaUrl(match.audio_thumbnail) ||
+               getMediaUrl(match.image) || 
+               "https://images.unsplash.com/photo-1446776877081-d282a0f896e2?w=400&h=300&fit=crop"
       };
+      
+      return displayData;
     }
 
     // Second priority: Check for direct mediaData properties
@@ -543,8 +640,7 @@ export default function MediaPlayerScreen() {
       return {
         title: mediaData.title || mediaData.name || mediaData.actual_title || (isAudio ? "Audio Content" : "Media Content"),
         collection: mediaData.collection || (isAudio ? "Audio Collection" : "ArchivART Collection"),
-        description: mediaData.description || mediaData.actual_description || 
-                   (isAudio ? "High-quality audio content from our digital archive" : "Immersive digital experience from our collection"),
+        description: mediaData.description,
         environment: mediaData.environment || (isAudio ? "Audio Archive" : "Digital Archive"),
         estimatedTime: mediaData.estimatedTime || (isAudio ? "Audio Track" : "Variable"),
         rating: "4.8/5",
@@ -603,6 +699,18 @@ export default function MediaPlayerScreen() {
 
   const displayData = getDisplayData();
 
+  // Helper functions for text expansion
+  const shouldTruncateTitle = displayData.title.length > 50;
+  const shouldTruncateDescription = displayData.description.length > 100;
+
+  const toggleTitleExpansion = () => {
+    setIsTitleExpanded(!isTitleExpanded);
+  };
+
+  const toggleDescriptionExpansion = () => {
+    setIsDescriptionExpanded(!isDescriptionExpanded);
+  };
+
   // Helper functions for orientation
   const isLandscape = () => {
     return isLandscapeMode;
@@ -616,54 +724,21 @@ export default function MediaPlayerScreen() {
     const screenWidth = screenData.width;
     const screenHeight = screenData.height;
     
-    // For fullscreen videos, always use screen dimensions
-    if (isFullscreen || isLandscape()) {
-      return {
-        width: screenWidth,
-        height: screenHeight,
-        backgroundColor: '#000000',
-        alignSelf: 'center' as const,
-      };
-    }
-    
-    // For portrait mode, maintain aspect ratio but fill screen
-    let videoWidth, videoHeight;
-    
-    if (videoDimensions.width > 0 && videoDimensions.height > 0) {
-      // Use actual video dimensions to maintain aspect ratio
-      const videoAspect = videoDimensions.width / videoDimensions.height;
-      const screenAspectRatio = screenWidth / screenHeight;
-      
-        if (videoAspect > screenAspectRatio) {
-        // Video is wider than screen - fit to width
-          videoWidth = screenWidth;
-          videoHeight = screenWidth / videoAspect;
-        } else {
-        // Video is taller than screen - fit to height
-          videoHeight = screenHeight;
-          videoWidth = screenHeight * videoAspect;
-      }
-    } else {
-      // Fallback: use screen dimensions
-      videoWidth = screenWidth;
-      videoHeight = screenHeight;
-    }
-    
+    // Always use full screen dimensions for proper display
     return {
-      width: videoWidth,
-      height: videoHeight,
+      width: screenWidth,
+      height: screenHeight,
       backgroundColor: '#000000',
-      alignSelf: 'center' as const,
     };
   };
 
   const getVideoResizeMode = () => {
-    // For fullscreen or landscape mode, use COVER to fill the screen
+    // For fullscreen or landscape mode, use cover to fill the screen
     if (isFullscreen || isLandscape()) {
-      return ResizeMode.COVER;
+      return 'cover';
     }
-    // For portrait mode, use CONTAIN to maintain aspect ratio
-    return ResizeMode.CONTAIN;
+    // For portrait mode, use contain to maintain aspect ratio
+    return 'contain';
   };
 
   return (
@@ -673,53 +748,17 @@ export default function MediaPlayerScreen() {
       {/* Full Screen Video Player */}
       {url && !isAudio ? (
         <View style={styles.videoContainer}>
-          <Video
-            ref={videoRef}
-            source={{ uri: url }}
+          <VideoView
+            player={videoPlayer}
             style={getVideoStyle()}
-            useNativeControls={false}
-            resizeMode={getVideoResizeMode()}
-            shouldPlay={isPlaying}
-            isLooping={true}
-            isMuted={isMuted}
-            onLoadStart={() => {
-              setIsLoading(true);
-              setHasError(false);
-            }}
-            onLoad={(status) => {
-              setIsLoading(false);
-              setHasError(false);
-              
-              if (status.isLoaded && status.durationMillis) {
-                // Get video dimensions from status
-                const videoWidth = (status as any).naturalSize?.width || 0;
-                const videoHeight = (status as any).naturalSize?.height || 0;
-                
-                if (videoWidth > 0 && videoHeight > 0) {
-                  setVideoDimensions({ width: videoWidth, height: videoHeight });
-                  setVideoAspectRatio(videoWidth / videoHeight);
-                }
-              }
-              
-              setIsLoading(false);
-              setHasError(false);
-            }}
-            onError={(error) => {
-              // Handle video load error
-              setIsLoading(false);
-              setHasError(true);
-            }}
-            onPlaybackStatusUpdate={(status) => {
-              if (status.isLoaded && status.didJustFinish) {
-                setIsPlaying(false);
-              }
-            }}
+            nativeControls={false}
+            contentFit={getVideoResizeMode()}
           />
           
-          {/* Tap Area for Controls */}
+          {/* Tap Area for Controls - Toggle on tap */}
           <Pressable 
             style={styles.tapArea}
-            onPress={showControlsWithDelay}
+            onPress={toggleControls}
           />
           
           {/* Loading Overlay */}
@@ -744,9 +783,7 @@ export default function MediaPlayerScreen() {
                   onPress={() => {
                     setHasError(false);
                     setIsLoading(true);
-                    if (videoRef.current) {
-                      videoRef.current.loadAsync({ uri: url });
-                    }
+                    // Video player will automatically reload with the URL
                   }}
                 >
                   <Text style={styles.retryButtonText}>Retry</Text>
@@ -823,28 +860,33 @@ export default function MediaPlayerScreen() {
             <View style={styles.bottomContent}>
               {/* Title and Description */}
               <View style={[styles.contentInfo, isLandscape() && styles.contentInfoLandscape]}>
-                <Text style={[styles.reelsTitle, isLandscape() && styles.reelsTitleLandscape]} numberOfLines={2}>
-                  {displayData.title}
-                </Text>
-                <Text style={[styles.reelsDescription, isLandscape() && styles.reelsDescriptionLandscape]} numberOfLines={3}>
-                  {displayData.description}
-                </Text>
-                <View style={styles.reelsMeta}>
-                  <View style={styles.metaItem}>
-                    <Ionicons name="star" size={12} color="#FFD700" />
-                    <Text style={styles.reelsMetaText}>{displayData.rating}</Text>
-                  </View>
-                  <View style={styles.metaDivider} />
-                  <View style={styles.metaItem}>
-                    <Ionicons name="location" size={12} color="rgba(255,255,255,0.6)" />
-                    <Text style={styles.reelsMetaText}>{displayData.environment}</Text>
-                  </View>
-                  <View style={styles.metaDivider} />
-                  <View style={styles.metaItem}>
-                    <Ionicons name="time" size={12} color="rgba(255,255,255,0.6)" />
-                    <Text style={styles.reelsMetaText}>{displayData.estimatedTime}</Text>
-                  </View>
-                </View>
+                <TouchableOpacity 
+                  onPress={shouldTruncateTitle ? toggleTitleExpansion : undefined}
+                  activeOpacity={shouldTruncateTitle ? 0.7 : 1}
+                  disabled={!shouldTruncateTitle}
+                >
+                  <Text style={[styles.reelsTitle, isLandscape() && styles.reelsTitleLandscape]} 
+                        numberOfLines={shouldTruncateTitle && !isTitleExpanded ? 2 : undefined}>
+                    {displayData.title}
+                    {shouldTruncateTitle && !isTitleExpanded && (
+                      <Text style={styles.expandIndicator}>...</Text>
+                    )}
+                  </Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  onPress={shouldTruncateDescription ? toggleDescriptionExpansion : undefined}
+                  activeOpacity={shouldTruncateDescription ? 0.7 : 1}
+                  disabled={!shouldTruncateDescription}
+                >
+                  <Text style={[styles.reelsDescription, isLandscape() && styles.reelsDescriptionLandscape]} 
+                        numberOfLines={shouldTruncateDescription && !isDescriptionExpanded ? 3 : undefined}>
+                    {displayData.description}
+                    {shouldTruncateDescription && !isDescriptionExpanded && (
+                      <Text style={styles.expandIndicator}>...</Text>
+                    )}
+                  </Text>
+                </TouchableOpacity>
               </View>
 
               {/* Right Side Actions */}
@@ -896,6 +938,15 @@ export default function MediaPlayerScreen() {
       ) : (
         /* Enhanced Audio Player with Visual Elements */
         <View style={styles.audioContainer}>
+          {/* Background Image for Audio */}
+          {isAudio && displayData.image && (
+            <Image 
+              source={{ uri: displayData.image }} 
+              style={styles.audioBackgroundImage}
+              resizeMode="cover"
+            />
+          )}
+          
           {/* Loading Overlay for Audio */}
           {isLoading && (
             <View style={styles.loadingOverlay}>
@@ -943,31 +994,10 @@ export default function MediaPlayerScreen() {
                     
                     // Retry loading audio
                     try {
-                      const { sound } = await Audio.Sound.createAsync(
-                        { uri: url },
-                        { shouldPlay: false, isLooping: true, isMuted: isMuted },
-                        (status) => {
-                          if (status.isLoaded) {
-                            if (status.didJustFinish) {
-                              setIsPlaying(false);
-                            }
-                            // Sync playing state with actual audio status
-                            if (status.isPlaying !== undefined) {
-                              setIsPlaying(status.isPlaying);
-                            }
-                          }
-                        }
-                      );
-                      
-                      if (audioRef.current) {
-                        await audioRef.current.unloadAsync();
-                      }
-                      audioRef.current = sound;
-                      
                       setIsLoading(false);
                       setHasError(false);
                       setIsLoadingAudio(false);
-                      await sound.playAsync();
+                      await audioPlayer.play();
                       setIsPlaying(true);
                     } catch (error) {
                       setIsLoading(false);
@@ -984,13 +1014,23 @@ export default function MediaPlayerScreen() {
           )}
           
           <LinearGradient
-            colors={['#1a1a2e', '#16213e', '#0f3460']}
+            colors={['#0a0a0a', '#1a1a2e', '#16213e', '#0f1419', '#000000']}
             style={styles.audioGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
           >
-            {/* Tap Area for Controls */}
+            {/* Animated Background Pattern */}
+            <Animated.View style={[styles.backgroundPattern, { opacity: glowAnim }]}>
+              <View style={styles.patternCircle1} />
+              <View style={styles.patternCircle2} />
+              <View style={styles.patternCircle3} />
+              <View style={styles.patternCircle4} />
+            </Animated.View>
+            
+            {/* Tap Area for Controls - Toggle on tap */}
             <Pressable 
               style={styles.tapArea}
-              onPress={showControlsWithDelay}
+              onPress={toggleControls}
             />
             {/* Top Controls for Audio */}
             <Animated.View style={[
@@ -1032,119 +1072,208 @@ export default function MediaPlayerScreen() {
               </TouchableOpacity>
             </Animated.View>
 
-            {/* Audio Visualizer */}
-            <View style={styles.audioVisualizer}>
-              <View style={styles.visualizerContainer}>
-                <Animated.View style={[styles.audioBar, { height: bar1Anim }]} />
-                <Animated.View style={[styles.audioBar, { height: bar2Anim }]} />
-                <Animated.View style={[styles.audioBar, { height: bar3Anim }]} />
-                <Animated.View style={[styles.audioBar, { height: bar4Anim }]} />
-                <Animated.View style={[styles.audioBar, { height: bar5Anim }]} />
-              </View>
-              
-              {/* Album Art / Image */}
-              <View style={styles.albumArtContainer}>
-                <View style={styles.albumArt}>
+            {/* Modern Audio Player Layout */}
+            <View style={styles.modernAudioContainer}>
+              {/* Modern Album Art Section */}
+              <View style={styles.modernAlbumSection}>
+                <Animated.View 
+                  style={[
+                    styles.modernAlbumArt,
+                    {
+                      transform: [
+                        { scale: pulseAnim },
+                        {
+                          rotate: rotationAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: ['0deg', '360deg'],
+                          }),
+                        },
+                      ],
+                    },
+                  ]}
+                >
                   {displayData.image ? (
                     <Image 
                       source={{ uri: displayData.image }} 
-                      style={styles.albumArtImage}
+                      style={styles.modernAlbumImage}
                       resizeMode="cover"
                     />
                   ) : (
                     <LinearGradient
-                      colors={['#8B5CF6', '#7C3AED', '#6D28D9']}
-                      style={styles.albumArtPlaceholder}
+                      colors={['#667eea', '#764ba2', '#f093fb', '#f5576c']}
+                      style={styles.modernAlbumPlaceholder}
                     >
-                      <Ionicons name="musical-notes" size={48} color="white" />
+                      <Ionicons name="musical-notes" size={40} color="white" />
                     </LinearGradient>
                   )}
-                </View>
+                  
+                  {/* Modern glow ring */}
+                  <Animated.View 
+                    style={[
+                      styles.modernGlowRing,
+                      { opacity: glowAnim }
+                    ]} 
+                  />
+                </Animated.View>
+              </View>
+
+              {/* Unique Particle Visualizer */}
+              <View style={styles.particleVisualizerContainer}>
+                <Animated.View style={[styles.particleVisualizer, { opacity: glowAnim }]}>
+                  {/* Floating particles around the album art */}
+                  <Animated.View style={[styles.floatingParticle, styles.particle1, { 
+                    transform: [{ scale: bar1Anim }],
+                    opacity: bar1Anim 
+                  }]} />
+                  <Animated.View style={[styles.floatingParticle, styles.particle2, { 
+                    transform: [{ scale: bar2Anim }],
+                    opacity: bar2Anim 
+                  }]} />
+                  <Animated.View style={[styles.floatingParticle, styles.particle3, { 
+                    transform: [{ scale: bar3Anim }],
+                    opacity: bar3Anim 
+                  }]} />
+                  <Animated.View style={[styles.floatingParticle, styles.particle4, { 
+                    transform: [{ scale: bar4Anim }],
+                    opacity: bar4Anim 
+                  }]} />
+                  <Animated.View style={[styles.floatingParticle, styles.particle5, { 
+                    transform: [{ scale: bar5Anim }],
+                    opacity: bar5Anim 
+                  }]} />
+                  <Animated.View style={[styles.floatingParticle, styles.particle6, { 
+                    transform: [{ scale: bar6Anim }],
+                    opacity: bar6Anim 
+                  }]} />
+                </Animated.View>
+              </View>
+
+              {/* Unique Waveform Visualizer */}
+              <View style={styles.waveformContainer}>
+                <Animated.View style={[styles.waveformVisualizer, { opacity: glowAnim }]}>
+                  {/* Top waveform */}
+                  <View style={styles.waveformTop}>
+                    <Animated.View style={[styles.waveformBar, styles.waveformBar1, { height: bar7Anim }]} />
+                    <Animated.View style={[styles.waveformBar, styles.waveformBar2, { height: bar8Anim }]} />
+                    <Animated.View style={[styles.waveformBar, styles.waveformBar3, { height: bar9Anim }]} />
+                    <Animated.View style={[styles.waveformBar, styles.waveformBar4, { height: bar10Anim }]} />
+                    <Animated.View style={[styles.waveformBar, styles.waveformBar5, { height: bar11Anim }]} />
+                    <Animated.View style={[styles.waveformBar, styles.waveformBar6, { height: bar12Anim }]} />
+                    <Animated.View style={[styles.waveformBar, styles.waveformBar7, { height: bar1Anim }]} />
+                    <Animated.View style={[styles.waveformBar, styles.waveformBar8, { height: bar2Anim }]} />
+                  </View>
+                  
+                  {/* Bottom waveform (inverted) */}
+                  <View style={styles.waveformBottom}>
+                    <Animated.View style={[styles.waveformBar, styles.waveformBar9, { height: bar3Anim }]} />
+                    <Animated.View style={[styles.waveformBar, styles.waveformBar10, { height: bar4Anim }]} />
+                    <Animated.View style={[styles.waveformBar, styles.waveformBar11, { height: bar5Anim }]} />
+                    <Animated.View style={[styles.waveformBar, styles.waveformBar12, { height: bar6Anim }]} />
+                    <Animated.View style={[styles.waveformBar, styles.waveformBar13, { height: bar7Anim }]} />
+                    <Animated.View style={[styles.waveformBar, styles.waveformBar14, { height: bar8Anim }]} />
+                    <Animated.View style={[styles.waveformBar, styles.waveformBar15, { height: bar9Anim }]} />
+                    <Animated.View style={[styles.waveformBar, styles.waveformBar16, { height: bar10Anim }]} />
+                  </View>
+                </Animated.View>
               </View>
             </View>
 
 
-            {/* Bottom Content for Audio - Title, Description & Actions */}
+            {/* Modern Bottom Content */}
             <Animated.View style={[
-              styles.bottomContainer, 
+              styles.modernBottomContainer, 
               { opacity: controlsOpacity }
             ]}>
               <LinearGradient
-                colors={['transparent', 'rgba(0,0,0,0.4)', 'rgba(0,0,0,0.8)']}
-                style={styles.bottomGradient}
+                colors={['transparent', 'rgba(0,0,0,0.2)', 'rgba(0,0,0,0.6)']}
+                style={styles.modernBottomGradient}
               />
-              
-              <View style={styles.bottomContent}>
-                {/* Title and Description */}
-                <View style={styles.contentInfo}>
-                  <Text style={styles.reelsTitle} numberOfLines={2}>
-                    {displayData.title}
-                  </Text>
-                  <Text style={styles.reelsDescription} numberOfLines={3}>
-                    {displayData.description}
-                  </Text>
-                  <View style={styles.reelsMeta}>
-                    <View style={styles.metaItem}>
-                      <Ionicons name="star" size={12} color="#FFD700" />
-                      <Text style={styles.reelsMetaText}>{displayData.rating}</Text>
-                    </View>
-                    <View style={styles.metaDivider} />
-                    <View style={styles.metaItem}>
-                      <Ionicons name="location" size={12} color="rgba(255,255,255,0.6)" />
-                      <Text style={styles.reelsMetaText}>{displayData.environment}</Text>
-                    </View>
-                    <View style={styles.metaDivider} />
-                    <View style={styles.metaItem}>
-                      <Ionicons name="time" size={12} color="rgba(255,255,255,0.6)" />
-                      <Text style={styles.reelsMetaText}>{displayData.estimatedTime}</Text>
-                    </View>
-                  </View>
-                </View>
 
-                {/* Right Side Actions */}
-                <View style={styles.rightActions}>
+            <View style={styles.bottomContent}>
+              {/* Title and Description */}
+              <View style={[styles.contentInfo, isLandscape() && styles.contentInfoLandscape]}>
+                <TouchableOpacity 
+                  onPress={shouldTruncateTitle ? toggleTitleExpansion : undefined}
+                  activeOpacity={shouldTruncateTitle ? 0.7 : 1}
+                  disabled={!shouldTruncateTitle}
+                >
+                  <Text style={[styles.reelsTitle, isLandscape() && styles.reelsTitleLandscape]} 
+                        numberOfLines={shouldTruncateTitle && !isTitleExpanded ? 2 : undefined}>
+                    {displayData.title}
+                    {shouldTruncateTitle && !isTitleExpanded && (
+                      <Text style={styles.expandIndicator}>...</Text>
+                    )}
+                  </Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  onPress={shouldTruncateDescription ? toggleDescriptionExpansion : undefined}
+                  activeOpacity={shouldTruncateDescription ? 0.7 : 1}
+                  disabled={!shouldTruncateDescription}
+                >
+                  <Text style={[styles.reelsDescription, isLandscape() && styles.reelsDescriptionLandscape]} 
+                        numberOfLines={shouldTruncateDescription && !isDescriptionExpanded ? 3 : undefined}>
+                    {displayData.description}
+                    {shouldTruncateDescription && !isDescriptionExpanded && (
+                      <Text style={styles.expandIndicator}>...</Text>
+                    )}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+                {/* Modern Action Buttons */}
+                <View style={styles.modernActionsContainer}>
                   <TouchableOpacity 
-                    style={styles.actionButton}
+                    style={styles.modernActionButton}
                     onPress={toggleMute}
-                    activeOpacity={0.8}
+                    activeOpacity={0.7}
                   >
-                    <View style={styles.actionIcon}>
+                    <LinearGradient
+                      colors={isMuted ? ['#ff6b6b', '#ee5a52'] : ['#667eea', '#764ba2']}
+                      style={styles.modernActionGradient}
+                    >
                       <Ionicons 
                         name={isMuted ? "volume-mute" : "volume-high"} 
-                        size={22} 
+                        size={20} 
                         color="white" 
                       />
-                    </View>
-                    <Text style={styles.actionText}>
+                    </LinearGradient>
+                    <Text style={styles.modernActionText}>
                       {isMuted ? "Unmute" : "Mute"}
                     </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity 
-                    style={styles.actionButton}
+                    style={styles.modernActionButton}
                     onPress={() => setIsLiked(!isLiked)}
-                    activeOpacity={0.8}
+                    activeOpacity={0.7}
                   >
-                    <View style={styles.actionIcon}>
+                    <LinearGradient
+                      colors={isLiked ? ['#ff6b6b', '#ee5a52'] : ['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']}
+                      style={styles.modernActionGradient}
+                    >
                       <Ionicons 
                         name={isLiked ? "heart" : "heart-outline"} 
-                        size={22} 
-                        color={isLiked ? "#FF6B6B" : "white"} 
+                        size={20} 
+                        color={isLiked ? "white" : "rgba(255,255,255,0.8)"} 
                       />
-                    </View>
-                    <Text style={styles.actionText}>
+                    </LinearGradient>
+                    <Text style={styles.modernActionText}>
                       {isLiked ? "Liked" : "Like"}
                     </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity 
-                    style={styles.actionButton}
-                    activeOpacity={0.8}
+                    style={styles.modernActionButton}
+                    activeOpacity={0.7}
                   >
-                    <View style={styles.actionIcon}>
-                      <Ionicons name="share-outline" size={22} color="white" />
-                    </View>
-                    <Text style={styles.actionText}>
+                    <LinearGradient
+                      colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']}
+                      style={styles.modernActionGradient}
+                    >
+                      <Ionicons name="share-outline" size={20} color="rgba(255,255,255,0.8)" />
+                    </LinearGradient>
+                    <Text style={styles.modernActionText}>
                       Share
                     </Text>
                   </TouchableOpacity>
@@ -1165,9 +1294,14 @@ const styles = StyleSheet.create({
   },
   videoContainer: {
     flex: 1,
-    position: 'relative',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 1,
   },
   tapArea: {
     position: 'absolute',
@@ -1175,7 +1309,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    zIndex: 1,
+    zIndex: 5, // Higher z-index to ensure it's above other elements
+    backgroundColor: 'transparent', // Ensure it's transparent but clickable
   },
   loadingOverlay: {
     position: 'absolute',
@@ -1341,7 +1476,7 @@ const styles = StyleSheet.create({
   },
   contentInfo: {
     flex: 1,
-    marginRight: 100, // Space for absolutely positioned action buttons
+    marginRight: 120, // Space for absolutely positioned action buttons
   },
   reelsTitle: {
     fontSize: 22,
@@ -1355,35 +1490,19 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: 12,
   },
-  reelsMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-  },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  metaDivider: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
-    marginHorizontal: 8,
-  },
-  reelsMetaText: {
-    fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontWeight: '600',
+  expandIndicator: {
+    color: '#667eea',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
   rightActions: {
     alignItems: 'center',
-    gap: 24,
+    gap: 18,
     position: 'absolute',
     right: 20,
-    top: '50%',
-    transform: [{ translateY: -100 }],
+    top: '0%',
+    transform: [{ translateY: -70 }],
+    zIndex: 20,
   },
   actionButton: {
     alignItems: 'center',
@@ -1407,79 +1526,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
   },
-  fallbackContainer: {
-    flex: 1,
-  },
-  fallbackGradient: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  fallbackContent: {
-    alignItems: 'center',
-    paddingHorizontal: 40,
-    maxWidth: 320,
-  },
-  audioIcon: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: 'rgba(139, 92, 246, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 24,
-    borderWidth: 2,
-    borderColor: 'rgba(139, 92, 246, 0.3)',
-  },
-  fallbackTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: 'white',
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  fallbackSubtitle: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.7)',
-    textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 32,
-  },
-  backToScannerButton: {
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-  },
-  buttonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 32,
-    paddingVertical: 16,
-  },
-  backToScannerText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  debugOverlay: {
-    position: 'absolute',
-    top: 130,
-    left: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    padding: 12,
-    borderRadius: 8,
-    zIndex: 20,
-  },
-  debugText: {
-    color: 'white',
-    fontSize: 11,
-    fontFamily: 'monospace',
-    opacity: 0.8,
-  },
   
   // Landscape-specific styles
   topControlsLandscape: {
@@ -1490,7 +1536,7 @@ const styles = StyleSheet.create({
   },
   contentInfoLandscape: {
     maxWidth: 400,
-    marginRight: 80, // Space for absolutely positioned action buttons in landscape
+    marginRight: 100, // Space for absolutely positioned action buttons in landscape
   },
   reelsTitleLandscape: {
     fontSize: 18,
@@ -1502,106 +1548,313 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   rightActionsLandscape: {
-    gap: 20,
+    gap: 14,
     position: 'absolute',
     right: 20,
-    top: '50%',
-    transform: [{ translateY: -80 }],
+    top: '-50%',
+    transform: [{ translateY: -50 }],
+    zIndex: 20,
   },
   actionTextLandscape: {
     fontSize: 10,
   },
   
-  // Audio Player Styles
+  // Modern Audio Player Styles
   audioContainer: {
     flex: 1,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: '#000000',
+    zIndex: 1,
+  },
+  audioBackgroundImage: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
+    opacity: 0.3,
+    zIndex: 0,
   },
   audioGradient: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 1,
   },
-  audioVisualizer: {
+  // Modern Audio Container
+  modernAudioContainer: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     alignItems: 'center',
     width: '100%',
     paddingHorizontal: 20,
+    paddingTop: 60,
+    paddingBottom: 20,
   },
-  visualizerContainer: {
-    flexDirection: 'row',
+  // Modern Album Section
+  modernAlbumSection: {
     alignItems: 'center',
-    justifyContent: 'center',
+    marginBottom: 40,
+  },
+  modernAlbumArt: {
+    width: 200,
     height: 200,
-    marginBottom: 40,
-  },
-  audioBar: {
-    width: 8,
-    backgroundColor: '#8B5CF6',
-    marginHorizontal: 4,
-    borderRadius: 4,
-    minHeight: 20,
-  },
-  albumArtContainer: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  albumArt: {
-    width: 280,
-    height: 280,
-    borderRadius: 20,
+    borderRadius: 100,
     overflow: 'hidden',
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    marginBottom: 20,
+    elevation: 20,
+    shadowColor: '#667eea',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.4,
+    shadowRadius: 20,
+    borderWidth: 4,
+    borderColor: 'rgba(102, 126, 234, 0.3)',
   },
-  albumArtImage: {
+  modernAlbumImage: {
     width: '100%',
     height: '100%',
   },
-  albumArtPlaceholder: {
+  modernAlbumPlaceholder: {
     width: '100%',
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  audioPlayButton: {
+  modernGlowRing: {
+    position: 'absolute',
+    top: -15,
+    left: -15,
+    right: -15,
+    bottom: -15,
+    borderRadius: 115,
+    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+    shadowColor: '#667eea',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 30,
+    elevation: 10,
+  },
+  // Unique Particle Visualizer
+  particleVisualizerContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1,
+  },
+  particleVisualizer: {
+    width: 300,
+    height: 300,
+    position: 'relative',
+  },
+  floatingParticle: {
+    position: 'absolute',
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    shadowColor: '#667eea',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  particle1: {
+    top: '10%',
+    left: '20%',
+    backgroundColor: '#667eea',
+    shadowColor: '#667eea',
+  },
+  particle2: {
+    top: '20%',
+    right: '15%',
+    backgroundColor: '#764ba2',
+    shadowColor: '#764ba2',
+  },
+  particle3: {
+    bottom: '25%',
+    left: '10%',
+    backgroundColor: '#f093fb',
+    shadowColor: '#f093fb',
+  },
+  particle4: {
+    bottom: '15%',
+    right: '20%',
+    backgroundColor: '#f5576c',
+    shadowColor: '#f5576c',
+  },
+  particle5: {
+    top: '50%',
+    left: '5%',
+    backgroundColor: '#4facfe',
+    shadowColor: '#4facfe',
+  },
+  particle6: {
+    top: '60%',
+    right: '5%',
+    backgroundColor: '#00f2fe',
+    shadowColor: '#00f2fe',
+  },
+  // Unique Waveform Visualizer
+  waveformContainer: {
+    alignItems: 'center',
+    marginBottom: 30,
+  },
+  waveformVisualizer: {
+    width: 280,
+    height: 80,
+    position: 'relative',
+  },
+  waveformTop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 40,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    paddingHorizontal: 10,
+  },
+  waveformBottom: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 40,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    paddingHorizontal: 10,
+  },
+  waveformBar: {
+    width: 4,
+    borderRadius: 2,
+    minHeight: 8,
+    shadowColor: '#667eea',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  waveformBar1: { backgroundColor: '#667eea', shadowColor: '#667eea' },
+  waveformBar2: { backgroundColor: '#764ba2', shadowColor: '#764ba2' },
+  waveformBar3: { backgroundColor: '#f093fb', shadowColor: '#f093fb' },
+  waveformBar4: { backgroundColor: '#f5576c', shadowColor: '#f5576c' },
+  waveformBar5: { backgroundColor: '#4facfe', shadowColor: '#4facfe' },
+  waveformBar6: { backgroundColor: '#00f2fe', shadowColor: '#00f2fe' },
+  waveformBar7: { backgroundColor: '#43e97b', shadowColor: '#43e97b' },
+  waveformBar8: { backgroundColor: '#38f9d7', shadowColor: '#38f9d7' },
+  waveformBar9: { backgroundColor: '#ff6b6b', shadowColor: '#ff6b6b' },
+  waveformBar10: { backgroundColor: '#4ecdc4', shadowColor: '#4ecdc4' },
+  waveformBar11: { backgroundColor: '#45b7d1', shadowColor: '#45b7d1' },
+  waveformBar12: { backgroundColor: '#96ceb4', shadowColor: '#96ceb4' },
+  waveformBar13: { backgroundColor: '#feca57', shadowColor: '#feca57' },
+  waveformBar14: { backgroundColor: '#ff9ff3', shadowColor: '#ff9ff3' },
+  waveformBar15: { backgroundColor: '#ff0080', shadowColor: '#ff0080' },
+  waveformBar16: { backgroundColor: '#00ff80', shadowColor: '#00ff80' },
+  // Background pattern styles
+  backgroundPattern: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 0,
+  },
+  patternCircle1: {
+    position: 'absolute',
+    top: '10%',
+    left: '10%',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(139, 92, 246, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(139, 92, 246, 0.1)',
+  },
+  patternCircle2: {
+    position: 'absolute',
+    top: '60%',
+    right: '15%',
     width: 80,
     height: 80,
     borderRadius: 40,
-    overflow: 'hidden',
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    backgroundColor: 'rgba(255, 107, 107, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 107, 107, 0.1)',
   },
-  audioPlayButtonGradient: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
+  patternCircle3: {
+    position: 'absolute',
+    bottom: '20%',
+    left: '20%',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(78, 205, 196, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(78, 205, 196, 0.1)',
   },
-  audioControls: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 30,
-    marginBottom: 20,
-  },
-  audioControlButton: {
+  patternCircle4: {
+    position: 'absolute',
+    top: '30%',
+    right: '30%',
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    justifyContent: 'center',
+    backgroundColor: 'rgba(69, 183, 209, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(69, 183, 209, 0.1)',
+  },
+  // Modern Bottom Content Styles
+  modernBottomContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 180,
+    zIndex: 10,
+  },
+  modernBottomGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '100%',
+  },
+  // Modern Action Buttons
+  modernActionsContainer: {
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    gap: 16,
+  },
+  modernActionButton: {
+    alignItems: 'center',
+    gap: 6,
+  },
+  modernActionGradient: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#667eea',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  modernActionText: {
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontWeight: '600',
+    textAlign: 'center',
   },
   skipButton: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',

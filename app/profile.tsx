@@ -1,21 +1,42 @@
+import { AuthGuard } from '@/components/AuthGuard';
 import { WarningModal } from '@/components/ui/WarningModal';
 import { getProfileImageUrl } from '@/constants/Api';
 import { useAuth } from '@/contexts/AuthContext';
 import { getAvatarProps } from '@/utils/avatarUtils';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import React, { useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import React, { useCallback, useState } from 'react';
 import { Alert, Dimensions, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
 
 export default function ProfileScreen() {
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [imageLoadError, setImageLoadError] = useState(false);
 
+  // Refresh user data when screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      refreshUser().catch(error => {
+      });
+    }, [refreshUser])
+  );
   // Get avatar props using utility function
   const avatarProps = user ? getAvatarProps(user) : null;
+
+  // Show loading if user data is not available yet
+  if (!user) {
+    return (
+      <AuthGuard>
+        <View style={styles.container}>
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>Loading profile...</Text>
+          </View>
+        </View>
+      </AuthGuard>
+    );
+  }
 
   const handleLogout = () => {
     setShowLogoutModal(true);
@@ -36,11 +57,12 @@ export default function ProfileScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <ScrollView 
-        contentContainerStyle={styles.scrollContainer}
-        showsVerticalScrollIndicator={false}
-      >
+    <AuthGuard>
+      <View style={styles.container}>
+        <ScrollView 
+          contentContainerStyle={styles.scrollContainer}
+          showsVerticalScrollIndicator={false}
+        >
         {/* Back Button */}
         <TouchableOpacity 
           style={styles.backButton}
@@ -101,7 +123,7 @@ export default function ProfileScreen() {
               <View style={[styles.statIcon, { backgroundColor: '#3B82F6' }]}>
                 <Ionicons name="scan" size={20} color="#FFFFFF" />
               </View>
-              <Text style={styles.statNumber}>125</Text>
+              <Text style={styles.statNumber}>--</Text>
               <Text style={styles.statLabel}>Scans</Text>
             </View>
             
@@ -109,7 +131,7 @@ export default function ProfileScreen() {
               <View style={[styles.statIcon, { backgroundColor: '#10B981' }]}>
                 <Ionicons name="time" size={20} color="#FFFFFF" />
               </View>
-              <Text style={styles.statNumber}>12</Text>
+              <Text style={styles.statNumber}>--</Text>
               <Text style={styles.statLabel}>Hours</Text>
             </View>
             
@@ -117,7 +139,7 @@ export default function ProfileScreen() {
               <View style={[styles.statIcon, { backgroundColor: '#8B5CF6' }]}>
                 <Ionicons name="heart" size={20} color="#FFFFFF" />
               </View>
-              <Text style={styles.statNumber}>24</Text>
+              <Text style={styles.statNumber}>--</Text>
               <Text style={styles.statLabel}>Favorites</Text>
             </View>
           </View>
@@ -178,6 +200,7 @@ export default function ProfileScreen() {
         type="warning"
       />
     </View>
+    </AuthGuard>
   );
 }
 
@@ -404,5 +427,16 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#64748B',
+    marginTop: 16,
   },
 });

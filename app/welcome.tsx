@@ -10,8 +10,6 @@ export default function WelcomeScreen() {
   const isDark = colorScheme === 'dark';
   const { isAuthenticated, isLoading, user } = useAuth();
 
-  // No automatic redirect - show profile when authenticated, login when not
-
   // Show loading screen while checking authentication
   if (isLoading) {
     return (

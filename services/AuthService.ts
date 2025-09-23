@@ -63,7 +63,7 @@ class AuthService {
       await AsyncStorage.setItem('accessToken', accessToken);
       await AsyncStorage.setItem('refreshToken', refreshToken);
     } catch (error) {
-      
+     
     }
   }
 
@@ -73,7 +73,6 @@ class AuthService {
       const refreshToken = await AsyncStorage.getItem('refreshToken');
       return { accessToken, refreshToken };
     } catch (error) {
-      
       return { accessToken: null, refreshToken: null };
     }
   }
@@ -257,8 +256,9 @@ class AuthService {
     }
     
     // Real API call (when mock mode is disabled)
+    const loginUrl = buildUrl(API_ENDPOINTS.AUTH.LOGIN);
         
-        const response = await fetch(buildUrl(API_ENDPOINTS.AUTH.LOGIN), {
+    const response = await fetch(loginUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -268,8 +268,9 @@ class AuthService {
 
     if (!response.ok) {
       let errorMessage = 'Login failed';
+      let errorData = null;
       try {
-        const errorData = await response.json();
+        errorData = await response.json();
         
         // Handle rate limiting specifically
         if (errorData.error && errorData.error.includes('Too many authentication attempts')) {
@@ -280,7 +281,6 @@ class AuthService {
           errorMessage = errorData.message || errorData.error || `HTTP ${response.status}: ${response.statusText}`;
         }
       } catch (parseError) {
-        
         errorMessage = `HTTP ${response.status}: ${response.statusText}`;
       }
       throw new Error(errorMessage);
@@ -304,10 +304,6 @@ class AuthService {
     await this.storeTokens(data.accessToken, data.refreshToken);
     
     // Store user data
-    
-    
-    
-    
     await AsyncStorage.setItem('user', JSON.stringify(data.user));
     
     return data;

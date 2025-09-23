@@ -1,5 +1,5 @@
 import { AuthGuard } from '@/components/AuthGuard';
-import { API_CONFIG, API_ENDPOINTS, buildUrl } from '@/constants/Api';
+import { API_ENDPOINTS, buildUrl, getMediaUrl } from '@/constants/Api';
 import AuthService from '@/services/AuthService';
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -26,6 +26,7 @@ export default function ScannerScreen() {
   const [cameraKey, setCameraKey] = useState(0);
   const [isReinitializing, setIsReinitializing] = useState(false);
   const [hasNavigatedAway, setHasNavigatedAway] = useState(false);
+  const [isManualUpload, setIsManualUpload] = useState(false);
 
   // Animated scan line
   const scanAnim = useRef(new Animated.Value(0)).current;
@@ -153,7 +154,7 @@ export default function ScannerScreen() {
   };
 
   const captureAndProcessImage = async () => {
-    if (isScanning) return;
+    if (isScanning || isManualUpload) return;
     if (!permission?.granted || !isReady || !cameraInitialized) {
 
       return;
@@ -344,39 +345,42 @@ export default function ScannerScreen() {
 
       const mediaType = (match.media_type || '').toLowerCase();
 
-      // Build full media URL - API returns file_path like "filename.mp4" or "/uploads/media/filename.mp4"
-      const mediaUrl = match.file_path
-        ? (match.file_path.startsWith('http')
-            ? match.file_path
-            : match.file_path.startsWith('/uploads/media/')
-            ? `${API_CONFIG.BASE_URL}${match.file_path}`
-            : `${API_CONFIG.BASE_URL}/uploads/media/${match.file_path}`)
-        : '';
-
-
-
-
+      // Build full media URL using common utility function
+      const mediaUrl = getMediaUrl(match.file_path) || '';
       
       // Validate URL construction
       try {
         new URL(mediaUrl);
-
       } catch (urlError) {
-
-
-
-
+        setHasNavigatedAway(true);
+        router.push('/no-match');
+        return;
       }
 
       // Set flag to indicate we're navigating away
       setHasNavigatedAway(true);
+      
       try {
-        router.push({ pathname: '/media-player', params: { url: mediaUrl, type: mediaType } });
+        router.push({ 
+          pathname: '/media-player', 
+          params: { 
+            url: mediaUrl, 
+            type: mediaType,
+            mediaData: JSON.stringify(json) // Pass the full API response
+          } 
+        });
 
       } catch (navError) {
 
         // Fallback navigation
-        router.replace({ pathname: '/media-player', params: { url: mediaUrl, type: mediaType } });
+        router.replace({ 
+          pathname: '/media-player', 
+          params: { 
+            url: mediaUrl, 
+            type: mediaType,
+            mediaData: JSON.stringify(json) // Pass the full API response
+          } 
+        });
       }
     } catch (e) {
 
@@ -461,17 +465,10 @@ export default function ScannerScreen() {
       }
 
       const json = await apiRes.json().catch((parseError) => {
-
-
         return null;
       });
 
-
-
-
-
       if (!apiRes.ok || !json?.success) {
-
         setHasNavigatedAway(true);
         try {
           router.push('/no-match');
@@ -484,8 +481,8 @@ export default function ScannerScreen() {
       }
 
       const match = json.match || (Array.isArray(json.matches) && json.matches.length > 0 ? json.matches[0] : null);
+      
       if (!match) {
-
         setHasNavigatedAway(true);
         try {
           router.push('/no-match');
@@ -500,33 +497,33 @@ export default function ScannerScreen() {
 
       const mediaType = (match.media_type || '').toLowerCase();
 
-      // Build full media URL - API returns file_path like "filename.mp4" or "/uploads/media/filename.mp4"
-      const mediaUrl = match.file_path
-        ? (match.file_path.startsWith('http')
-            ? match.file_path
-            : match.file_path.startsWith('/uploads/media/')
-            ? `${API_CONFIG.BASE_URL}${match.file_path}`
-            : `${API_CONFIG.BASE_URL}/uploads/media/${match.file_path}`)
-        : '';
-
-
-
-
+      // Build full media URL using common utility function
+      const mediaUrl = getMediaUrl(match.file_path) || '';
+      
       
       // Validate URL construction
       try {
-        new URL(mediaUrl);
-
+        new URL(mediaUrl);  
       } catch (urlError) {
 
-
-
-
+        setHasNavigatedAway(true);
+        router.push('/no-match');
+        return;
       }
 
       // Set flag to indicate we're navigating away
       setHasNavigatedAway(true);
-      router.push({ pathname: '/media-player', params: { url: mediaUrl, type: mediaType } });
+      
+
+      
+      router.push({ 
+        pathname: '/media-player', 
+        params: { 
+          url: mediaUrl, 
+          type: mediaType,
+          mediaData: JSON.stringify(json) // Pass the full API response
+        } 
+      });
     } catch (e) {
 
       setHasNavigatedAway(true);
@@ -535,6 +532,7 @@ export default function ScannerScreen() {
       setIsScanning(false);
       setIsProcessing(false);
       setProgress(100);
+      setIsManualUpload(false); // Reset manual upload flag
       // Clear any possible timer from above block
       // We defensively clear multiple times; safe if undefined
       try { /* noop */ } finally {}
@@ -620,12 +618,30 @@ export default function ScannerScreen() {
                 onPress={async () => {
                   if (isScanning) return;
 
-
+                  // Stop all auto-scanning processes immediately
+                  setIsManualUpload(true);
+                  setIsScanning(false);
+                  setIsProcessing(false);
+                  setHasAutoCaptured(false);
+                  setRetryCount(0);
+                  setProgress(0);
+                  
+                  // Clear any existing timers and intervals
+                  if (autoCaptureTimer) {
+                    clearTimeout(autoCaptureTimer);
+                    setAutoCaptureTimer(null);
+                  }
+                  
+                  // Progress timers will be cleared when the function completes
+                  
+                  // Reset camera state to prevent conflicts
+                  setIsReady(false);
+                  setCameraInitialized(false);
 
                   // Request permissions first
                   const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
                   if (status !== 'granted') {
-
+                    setIsManualUpload(false); // Reset flag on permission error
                     return;
                   }
 
@@ -643,7 +659,8 @@ export default function ScannerScreen() {
                     // Process selected image using the same function
                     await processSelectedImage(selectedImage.uri);
                   } else {
-
+                    // User canceled, reset manual upload flag
+                    setIsManualUpload(false);
                   }
                 }}
               >

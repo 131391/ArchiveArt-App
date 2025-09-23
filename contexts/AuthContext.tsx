@@ -6,7 +6,7 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (credentials: LoginCredentials) => Promise<void>;
+  login: (credentials: LoginCredentials) => Promise<Error | null>;
   register: (userData: RegisterData) => Promise<Error | null>;
   googleLogin: (googleData?: GoogleAuthData) => Promise<Error | null>;
   logout: () => Promise<void>;
@@ -51,6 +51,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Skip server profile refresh during initialization to avoid API errors
         // The user profile can be refreshed later when needed
       } else {
+        setUser(null);
       }
     } catch (error) {
       // Handle auth initialization error

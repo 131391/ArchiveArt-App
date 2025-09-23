@@ -200,28 +200,38 @@ export function getApiUrl(endpoint: string): string {
 }
 
 /**
+ * Common utility function to handle media URLs (images, videos, audio, etc.)
+ * If URL starts with http/https, use direct URL. Otherwise, fall back to base URL logic.
+ * @param mediaUrl - Media URL or path
+ * @returns Complete URL string for the media
+ */
+export function getMediaUrl(mediaUrl?: string | null): string | null {
+  if (!mediaUrl) {
+    return null;
+  }
+
+  // If it's already a complete URL (http/https), return as is
+  if (mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://')) {
+    return mediaUrl;
+  }
+
+  // If it's base64 data, return as is
+  if (mediaUrl.startsWith('data:')) {
+    return mediaUrl;
+  }
+
+  // If it's a relative path, construct the full URL using base URL
+  const cleanPath = mediaUrl.startsWith('/') ? mediaUrl : `/${mediaUrl}`;
+  return `${API_CONFIG.BASE_URL}${cleanPath}`;
+}
+
+/**
  * Gets the proper URL for profile images
  * @param profilePicture - Profile picture URL or path
  * @returns Complete URL string for the profile image
  */
 export function getProfileImageUrl(profilePicture?: string | null): string | null {
-  if (!profilePicture) {
-    return null;
-  }
-
-  // If it's already a complete URL (http/https), return as is
-  if (profilePicture.startsWith('http://') || profilePicture.startsWith('https://')) {
-    return profilePicture;
-  }
-
-  // If it's base64 data, return as is
-  if (profilePicture.startsWith('data:')) {
-    return profilePicture;
-  }
-
-  // If it's a relative path, construct the full URL using base URL
-  const cleanPath = profilePicture.startsWith('/') ? profilePicture : `/${profilePicture}`;
-  return `${API_CONFIG.BASE_URL}${cleanPath}`;
+  return getMediaUrl(profilePicture);
 }
 
 /**
