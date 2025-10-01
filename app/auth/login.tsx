@@ -6,15 +6,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-    Animated,
-    Dimensions,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  Animated,
+  Dimensions,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 export default function LoginScreen() {
@@ -124,12 +124,16 @@ export default function LoginScreen() {
         let errorMessage = error.message;
         
         if (errorMessage.includes('Invalid credentials') || errorMessage.includes('401')) {
+          console.log('Invalid credentials',errorMessage);
           errorMessage = 'Invalid email or password. Please check your credentials and try again.';
         } else if (errorMessage.includes('Network') || errorMessage.includes('fetch')) {
+          console.log('Network error',error);
           errorMessage = 'Network error. Please check your internet connection and try again.';
         } else if (errorMessage.includes('timeout')) {
+          console.log('Timeout error',error);
           errorMessage = 'Request timed out. Please try again.';
         } else if (errorMessage.includes('Too many')) {
+          console.log('Too many attempts',error);
           errorMessage = 'Too many login attempts. Please wait a few minutes before trying again.';
         }
         

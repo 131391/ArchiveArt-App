@@ -191,8 +191,21 @@ export default function ProfileUpdateScreen() {
         }
       }
 
+      console.log('=== PROFILE UPDATE SCREEN DEBUG ===');
+      console.log('Preparing to send profileData:', {
+        name: profileData.name,
+        mobile: profileData.mobile,
+        has_profile_picture: !!profileData.profile_picture,
+        profile_picture_type: profileData.profile_picture ? 
+          (profileData.profile_picture.startsWith('data:') ? 'base64' : 
+           profileData.profile_picture.startsWith('http') ? 'url' : 'unknown') : 'none',
+        profile_picture_length: profileData.profile_picture?.length || 0
+      });
+
       // Use AuthContext updateProfile method
       const error = await updateProfile(profileData);
+      console.log('updateProfile error',error);
+      console.log('=== PROFILE UPDATE SCREEN DEBUG END ===');
 
       if (error) {
         throw error;

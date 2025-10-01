@@ -27,8 +27,15 @@
             "CFBundleURLSchemes": [
               "com.googleusercontent.apps.245858141100-64maf1nnom0omlleevt52cudkepm5vgi"
             ]
+          },
+          {
+            "CFBundleURLName": "Google Sign-In",
+            "CFBundleURLSchemes": [
+              "com.googleusercontent.apps.245858141100-64maf1nnom0omlleevt52cudkepm5vgi"
+            ]
           }
-        ]
+        ],
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {

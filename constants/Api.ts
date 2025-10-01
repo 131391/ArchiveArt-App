@@ -40,10 +40,17 @@
  *    const response = await fetch(buildUrl(API_ENDPOINTS.MEDIA.MATCH), { ... });
  */
 
+// Environment Configuration
+// Change USE_LOCAL_SERVER to true for local testing with your WiFi IP
+const USE_LOCAL_SERVER = true; // Set to false for production
+// const LOCAL_SERVER_IP = '10.55.127.67'; // Your current WiFi IP address
+const LOCAL_SERVER_IP = '172.20.10.5'; // Your current WiFi IP address
+const LOCAL_SERVER_PORT = '3000';
+
 export const API_CONFIG = {
-  BASE_URL: process.env.API_BASE_URL || 'https://archivart.onrender.com', // Production URL
-  // BASE_URL: 'http://172.20.10.5:3000', // For emulator testing
-  // BASE_URL: 'http://localhost:3000', // For local development
+  BASE_URL: USE_LOCAL_SERVER 
+    ? `http://${LOCAL_SERVER_IP}:${LOCAL_SERVER_PORT}` 
+    : 'https://archivart.onrender.com',
   // Enable mock mode for development when backend is not available
   MOCK_MODE: false, // Enable mock mode for testing
 };
@@ -276,6 +283,7 @@ export function handleApiError(response: Response, responseData?: any): string {
   switch (status) {
     case API_STATUS.BAD_REQUEST:
       if (errorData.error === ERROR_MESSAGES.VALIDATION_FAILED) {
+        console.log('Validation failed',errorData);
         return 'Please check your input and try again.';
       }
       if (errorData.error === ERROR_MESSAGES.USER_ALREADY_EXISTS) {
